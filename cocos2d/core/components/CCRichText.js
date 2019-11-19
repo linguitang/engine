@@ -526,6 +526,7 @@ let RichText = cc.Class({
         this._applyTextAttribute(labelSegment);
 
         this.node.addChild(labelSegment);
+        labelSegment.group = this.node.group;
         this._labelSegments.push(labelSegment);
 
         return labelSegment;
@@ -652,6 +653,7 @@ let RichText = cc.Class({
             spriteNode.setAnchorPoint(0, 0);
             spriteComponent.type = cc.Sprite.Type.SLICED;
             spriteComponent.sizeMode = cc.Sprite.SizeMode.CUSTOM;
+            spriteNode.group = this.node.group;
             this.node.addChild(spriteNode);
             this._labelSegments.push(spriteNode);
 
@@ -665,13 +667,13 @@ let RichText = cc.Class({
             //follow the original rule, expectHeight must less then lineHeight
             if (expectHeight > 0 && expectHeight < this.lineHeight) {
                 scaleFactor = expectHeight / spriteHeight;
-                spriteWidth = spriteWidth * scaleFactor;
-                spriteHeight = spriteHeight * scaleFactor;
+                spriteWidth = 30; // spriteWidth * scaleFactor;
+                spriteHeight = 30; //spriteHeight * scaleFactor;
             }
             else {
                 scaleFactor = this.lineHeight / spriteHeight;
-                spriteWidth = spriteWidth * scaleFactor;
-                spriteHeight = spriteHeight * scaleFactor;
+                spriteWidth = 30;//spriteWidth * scaleFactor;
+                spriteHeight = 30;// spriteHeight * scaleFactor;
             }
 
             if (expectWidth > 0) spriteWidth = expectWidth;
@@ -850,6 +852,14 @@ let RichText = cc.Class({
             let labelSize = label.getContentSize();
 
             label.y = this.lineHeight * (totalLineCount - lineCount) - this._labelHeight / 2;
+
+            if (label.getComponent(cc.Sprite) != null) {
+                if (this.node.getComponent(cc.RichText).lineHeight >= 35){
+                    label.y +=12;
+                } else {
+                    label.y +=5;
+                }
+            }
 
             if (lineCount === nextLineIndex) {
                 nextTokenX += labelSize.width;
