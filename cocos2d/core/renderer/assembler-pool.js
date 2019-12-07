@@ -74,9 +74,6 @@ class AssemblerPool extends Pool {
     }
 
     _clean (assembler) {
-        if (CC_JSB && CC_NATIVERENDERER) {
-            assembler.reset();
-        }
         assembler._renderComp = null;
     }
 }

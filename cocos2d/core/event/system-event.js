@@ -97,16 +97,7 @@ var SystemEvent = cc.Class({
         if (CC_EDITOR) {
             return;
         }
-
-        // for iOS 13+
-        if (isEnable && window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') {
-            DeviceMotionEvent.requestPermission().then(response => {
-                console.log(`Device Motion Event request permission: ${response}`);
-                inputManger.setAccelerometerEnabled(response === 'granted');
-            });
-        } else {
-            inputManger.setAccelerometerEnabled(isEnable);
-        }
+        inputManger.setAccelerometerEnabled(isEnable);
     },
 
     /**
