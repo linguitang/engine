@@ -180,8 +180,8 @@ var properties = {
     /**
      * !#en The plist file.
      * !#zh plist 格式的粒子配置文件。
-     * @property {ParticleAsset} file
-     * @default null
+     * @property {string} file
+     * @default ""
      */
     _file: {
         default: null,
