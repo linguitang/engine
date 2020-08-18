@@ -25,6 +25,7 @@
 const dependUtil = require('./depend-util');
 const { isScene, decodeUuid } = require('./helper');
 const { assets } = require('./shared');
+const { callInNextTick } = require('../platform/utils');
 const MissingObjectReporter = CC_EDITOR && Editor.require('app://editor/page/scene-utils/missing-object-reporter');
 require('../assets/CCAsset');
 
@@ -39,50 +40,50 @@ var utils = {
         var realEntries = options.paths = Object.create(null);
 
         if (options.debug === false) {
-            for (var i = 0, l = uuids.length; i < l; i++) {
+            for (let i = 0, l = uuids.length; i < l; i++) {
                 uuids[i] = decodeUuid(uuids[i]);
             }
 
-            for (var id in paths) {
-                var entry = paths[id];
-                var type = entry[1];
+            for (let id in paths) {
+                let entry = paths[id];
+                let type = entry[1];
                 entry[1] = types[type];
             }
         }
         else {
             var out = Object.create(null);
-            for (var i = 0, l = uuids.length; i < l; i++) {
-                var uuid = uuids[i];
+            for (let i = 0, l = uuids.length; i < l; i++) {
+                let uuid = uuids[i];
                 uuids[i] = out[uuid] = decodeUuid(uuid);
             }
             uuids = out;
         }
 
-        for (var id in paths) {
-            var entry = paths[id];
+        for (let id in paths) {
+            let entry = paths[id];
             realEntries[uuids[id]] = entry;
         }
 
         var scenes = options.scenes;
-        for (var name in scenes) {
-            var uuid = scenes[name];
+        for (let name in scenes) {
+            let uuid = scenes[name];
             scenes[name] = uuids[uuid];
         }
 
         var packs = options.packs;
-        for (var packId in packs) {
-            var packedIds = packs[packId];
-            for (var j = 0; j < packedIds.length; ++j) {
+        for (let packId in packs) {
+            let packedIds = packs[packId];
+            for (let j = 0; j < packedIds.length; ++j) {
                 packedIds[j] = uuids[packedIds[j]];
             }
         }
 
         var versions = options.versions;
         if (versions) {
-            for (var folder in versions) {
+            for (let folder in versions) {
                 var entries = versions[folder];
-                for (var i = 0; i < entries.length; i += 2) {
-                    var uuid = entries[i];
+                for (let i = 0; i < entries.length; i += 2) {
+                    let uuid = entries[i];
                     entries[i] = uuids[uuid] || uuid;
                 }
             }
@@ -90,7 +91,7 @@ var utils = {
 
         var redirect = options.redirect;
         if (redirect) {
-            for (var i = 0; i < redirect.length; i += 2) {
+            for (let i = 0; i < redirect.length; i += 2) {
                 redirect[i] = uuids[redirect[i]];
                 redirect[i + 1] = bundles[redirect[i + 1]];
             }
@@ -102,7 +103,7 @@ var utils = {
         for (var i = 0, l = task.input.length; i < l; i++) {
             var item = task.input[i];
             if (clearRef) {
-                !item.isNative && item.content && item.content._removeRef();
+                !item.isNative && item.content && item.content.decRef && item.content.decRef(false);
             }
             item.recycle();
         }
@@ -110,11 +111,11 @@ var utils = {
     },
 
     urlAppendTimestamp (url) {
-        if (cc.assetManager.appendTimeStamp && typeof url === 'string') {
+        if (cc.assetManager.downloader.appendTimeStamp && typeof url === 'string') {
             if (/\?/.test(url))
-                url += '&_t=' + (new Date() - 0);
+                return url + '&_t=' + (new Date() - 0);
             else
-                url += '?_t=' + (new Date() - 0);
+                return url + '?_t=' + (new Date() - 0);
         }
         return url;
     },
@@ -138,32 +139,34 @@ var utils = {
         var err = null;
         try {
             var info = dependUtil.parse(uuid, data);
+            var includeNative = true;
+            if (data instanceof cc.Asset && (!data.__nativeDepend__ || data._nativeAsset)) includeNative = false; 
             if (!preload) {
-                asyncLoadAssets = !CC_EDITOR && (data.asyncLoadAssets || (asyncLoadAssets && !info.preventDeferredLoadDependents));
-                for (var i = 0, l = info.deps.length; i < l; i++) {
-                    var dep = info.deps[i];
+                asyncLoadAssets = !CC_EDITOR && (!!data.asyncLoadAssets || (asyncLoadAssets && !info.preventDeferredLoadDependents));
+                for (let i = 0, l = info.deps.length; i < l; i++) {
+                    let dep = info.deps[i];
                     if (!(dep in exclude)) {
                         exclude[dep] = true;
-                        depends.push({uuid: dep, asyncLoadAssets, bundle: config && config.name});
+                        depends.push({uuid: dep, __asyncLoadAssets__: asyncLoadAssets, bundle: config && config.name});
                     }
                 }
 
-                if (!asyncLoadAssets && !info.preventPreloadNativeObject && info.nativeDep) {
+                if (includeNative && !asyncLoadAssets && !info.preventPreloadNativeObject && info.nativeDep) {
                     config && (info.nativeDep.bundle = config.name);
-                    depends.push(info.nativeDep);
+                    depends.push(Object.assign({}, info.nativeDep));
                 }
                 
             } else {
-                for (var i = 0, l = info.deps.length; i < l; i++) {
-                    var dep = info.deps[i];
+                for (let i = 0, l = info.deps.length; i < l; i++) {
+                    let dep = info.deps[i];
                     if (!(dep in exclude)) {
                         exclude[dep] = true;
                         depends.push({uuid: dep, bundle: config && config.name});
                     }
                 }
-                if (info.nativeDep) {
+                if (includeNative && info.nativeDep) {
                     config && (info.nativeDep.bundle = config.name);
-                    depends.push(info.nativeDep);
+                    depends.push(Object.assign({}, info.nativeDep));
                 }
             }
         }
@@ -189,10 +192,11 @@ var utils = {
     setProperties (uuid, asset, assetsMap) {
 
         var missingAsset = false;
-        if (asset.__depends__) {
+        let depends = asset.__depends__;
+        if (depends) {
             var missingAssetReporter = null;
-            for (var i = 0, l = asset.__depends__.length; i < l; i++) {
-                var depend = asset.__depends__[i];
+            for (var i = 0, l = depends.length; i < l; i++) {
+                var depend = depends[i];
                 var dependAsset = assetsMap[depend.uuid + '@import'];
                 if (!dependAsset) {
                     if (CC_EDITOR) {
@@ -205,39 +209,41 @@ var utils = {
                     missingAsset = true;
                 }
                 else {
-                    depend.owner[depend.prop] = dependAsset;
-                    dependAsset._addRef();
+                    depend.owner[depend.prop] = dependAsset.addRef();
                 }
             }
 
             missingAssetReporter && missingAssetReporter.reportByOwner();
-            delete asset['__depends__'];
+            asset.__depends__ = undefined;
         }
         
         if (asset.__nativeDepend__) {
-            if (assetsMap[uuid + '@native']) {
-                asset._nativeAsset = assetsMap[uuid + '@native'];
-            }
-            else {
-                missingAsset = true;
-                if (CC_EDITOR) {
-                    console.error(`the native asset of ${uuid} is missing!`);
+            if (!asset._nativeAsset) {
+                if (assetsMap[uuid + '@native']) {
+                    asset._nativeAsset = assetsMap[uuid + '@native'];
+                }
+                else {
+                    missingAsset = true;
+                    if (CC_EDITOR) {
+                        console.error(`the native asset of ${uuid} is missing!`);
+                    }
                 }
             }
-            delete asset['__nativeDepend__'];
+            asset.__nativeDepend__ = undefined;
         }
         return missingAsset;
     },
 
     gatherAsset (task) {
-        task.output = [];
-        for (var i = 0, l = task.source.length; i < l; i++) {
-            var item = task.source[i];
-            task.output.push(item.content);
+        let source = task.source;
+        if (!task.options.__outputAsArray__ && source.length === 1) {
+            task.output = source[0].content;
         }
-
-        if (task.output.length === 1) {
-            task.output = task.output[0];
+        else {
+            let output = task.output = [];
+            for (var i = 0, l = source.length; i < l; i++) {
+                output.push(source[i].content);
+            }
         }
     },
 
@@ -278,12 +284,12 @@ var utils = {
             }
         }
         options = options || Object.create(null);
-        return {options, onProgress, onComplete};
+        return { options, onProgress, onComplete };
     },
 
     parseLoadResArgs (type, onProgress, onComplete) {
         if (onComplete === undefined) {
-            var isValidType = cc.js.isChildClassOf(type, cc.RawAsset);
+            var isValidType = cc.js.isChildClassOf(type, cc.Asset);
             if (onProgress) {
                 onComplete = onProgress;
                 if (isValidType) {
@@ -303,22 +309,33 @@ var utils = {
         return { type, onProgress, onComplete };
     },
 
-    checkCircleReference (owner, uuid, map) {
-        if (!map[uuid]) {
+    checkCircleReference (owner, uuid, map, checked) {
+        if (!checked) { 
+            checked = Object.create(null);
+        }
+        let item = map[uuid];
+        if (!item || checked[uuid]) {
             return false;
         }
+        checked[uuid] = true;
         var result = false;
-        var deps = map[uuid].content && map[uuid].content.__depends__;
+        var deps = dependUtil.getDeps(uuid);
         if (deps) {
             for (var i = 0, l = deps.length; i < l; i++) {
                 var dep = deps[i];
-                if (dep.uuid === owner || utils.checkCircleReference(owner, dep.uuid, map)) {
+                if (dep === owner || utils.checkCircleReference(owner, dep, map, checked)) {
                     result = true;
                     break;
                 }
             }
         }
         return result;
+    },
+
+    asyncify (cb) {
+        return function (p1, p2) {
+            cb && callInNextTick(cb, p1, p2);
+        }
     }
 };
 

@@ -24,10 +24,14 @@
  ****************************************************************************/
 
 import Assembler from '../renderer/assembler';
+import MaterialVariant from '../assets/material/material-variant';
+import { Color } from '../value-types';
 
 const Component = require('./CCComponent');
 const RenderFlow = require('../renderer/render-flow');
 const Material = require('../assets/material/CCMaterial');
+
+let _temp_color = new Color();
 
 /**
  * !#en
@@ -58,7 +62,7 @@ let RenderComponent = cc.Class({
          * !#zh 渲染组件使用的材质。
          * @property {[Material]} sharedMaterials
          */
-        sharedMaterials: {
+        materials: {
             get () {
                 return this._materials;
             },
@@ -74,13 +78,13 @@ let RenderComponent = cc.Class({
     
     ctor () {
         this._vertsDirty = true;
-        this._material = null;
         this._assembler = null;
     },
 
     _resetAssembler () {
         Assembler.init(this);
         this._updateColor();
+        this.setVertsDirty();
     },
 
     __preload () {
@@ -149,7 +153,7 @@ let RenderComponent = cc.Class({
      * !#zh 根据指定索引获取材质
      * @method getMaterial
      * @param {Number} index 
-     * @return {Material}
+     * @return {MaterialVariant}
      */
     getMaterial (index) {
         if (index < 0 || index >= this._materials.length) {
@@ -159,12 +163,26 @@ let RenderComponent = cc.Class({
         let material = this._materials[index];
         if (!material) return null;
         
-        let instantiated = Material.getInstantiatedMaterial(material, this);
+        let instantiated = MaterialVariant.create(material, this);
         if (instantiated !== material) {
             this.setMaterial(index, instantiated);
         }
 
-        return this._materials[index];
+        return instantiated;
+    },
+
+    /**
+     * !#en Gets all the materials.
+     * !#zh 获取所有材质。
+     * @method getMaterials
+     * @return {[MaterialVariant]}
+     */
+    getMaterials () {
+        let materials = this._materials;
+        for (let i = 0; i < materials.length; i++) {
+            materials[i] = MaterialVariant.create(materials[i], this);
+        }
+        return materials;
     },
     
     /**
@@ -177,28 +195,31 @@ let RenderComponent = cc.Class({
      */
     setMaterial (index, material) {
         if (material !== this._materials[index]) {
-            material = Material.getInstantiatedMaterial(material, this);
+            material = MaterialVariant.create(material, this);
             this._materials[index] = material;
         }
+        this._updateMaterial();
+        this.markForRender(true);
         return material;
+    },
+
+    _getDefaultMaterial () {
+        return Material.getBuiltinMaterial('2d-sprite');
     },
 
     /**
      * Init material.
      */
     _activateMaterial () {
-        if (cc.game.renderType === cc.game.RENDER_TYPE_CANVAS) return;
+        let materials = this._materials;
+        if (!materials[0]) {
+            let material = this._getDefaultMaterial();
+            materials[0] = material;
+        }
 
-        // make sure material is belong to self.
-        let material = this.sharedMaterials[0];
-        if (!material) {
-            material = Material.getInstantiatedBuiltinMaterial('2d-sprite', this);
+        for (let i = 0; i < materials.length; i++) {
+            materials[i] = MaterialVariant.create(materials[i], this);
         }
-        else {
-            material = Material.getInstantiatedMaterial(material, this);
-        }
-        
-        this.setMaterial(0, material);
 
         this._updateMaterial();
     },
@@ -212,12 +233,15 @@ let RenderComponent = cc.Class({
 
     _updateColor () {
         if (this._assembler.updateColor) {
-            this._assembler.updateColor(this);
+            let premultiply = this.srcBlendFactor === cc.macro.BlendFactor.ONE;
+            premultiply && Color.premultiplyAlpha(_temp_color, this.node._color);
+            let color = premultiply ? _temp_color._val : null;
+            this._assembler.updateColor(this, color);
         }
     },
 
     _checkBacth (renderer, cullingMask) {
-        let material = this.sharedMaterials[0];
+        let material = this._materials[0];
         if ((material && material.getHash() !== renderer.material.getHash()) || 
             renderer.cullingMask !== cullingMask) {
             renderer._flush();

@@ -23,13 +23,13 @@
  THE SOFTWARE.
  ****************************************************************************/
 
+import Vec2 from '../value-types/vec2';
+
 const Contact = require('./CCContact');
 const CollisionType = Contact.CollisionType;
 const NodeEvent = require('../CCNode').EventType;
 
-const math = cc.vmath;
-
-let _vec2 = cc.v2();
+let _vec2 = new Vec2();
 
 function obbApplyMatrix (rect, mat4, out_bl, out_tl, out_tr, out_br) {
     let x = rect.x;
@@ -57,6 +57,58 @@ function obbApplyMatrix (rect, mat4, out_bl, out_tl, out_tr, out_br) {
     out_br.x = xa + yc + tx;
     out_br.y = xb + yd + ty;
 }
+
+/**
+ * !#en
+ * Collider Info.
+ * !#zh
+ * 碰撞体信息。
+ * @class ColliderInfo
+ */
+/**
+ * !#en
+ * Collider aabb information of last frame
+ * !#zh
+ * 碰撞体上一帧的 aabb 信息
+ * @property {Rect} preAabb
+ */
+/**
+ * !#en
+ * Collider aabb information of current frame
+ * !#zh
+ * 碰撞体当前帧的 aabb 信息
+ * @property {Rect} aabb
+ */
+/**
+ * !#en
+ * Collider matrix
+ * !#zh
+ * 碰撞体的矩阵信息
+ * @property {Mat4} matrix
+ */
+/**
+ * !#en
+ * Collider radius (for CircleCollider)
+ * !#zh
+ * 碰撞体的半径（只对 CircleCollider 有效）
+ * @property {Number} radius
+ */
+/**
+ * !#en
+ * Collider position (for CircleCollider)
+ * !#zh
+ * 碰撞体的位置（只对 CircleCollider 有效）
+ * @property {Vec2} position
+ */
+/**
+* !#en
+ * Collider points (for BoxCollider and PolygonCollider)
+ * !#zh
+ * 碰撞体的顶点信息（只对 BoxCollider 和 PolygonCollider 有效）
+ * @property {Vec2[]} points
+ */
+
+
 
 /**
  * !#en
@@ -225,7 +277,7 @@ let CollisionManager = cc.Class({
             let world = collider.world = {};
             world.aabb = cc.rect();
             world.preAabb = cc.rect();
-            world.matrix = math.mat4.create();
+            world.matrix = cc.mat4();
 
             world.radius = 0;
 
@@ -285,7 +337,7 @@ let CollisionManager = cc.Class({
         }
         else if (collider instanceof cc.CircleCollider) {
             // calculate world position
-            math.vec2.transformMat4(_vec2, collider.offset, m);
+            Vec2.transformMat4(_vec2, collider.offset, m);
 
             world.position.x = _vec2.x;
             world.position.y = _vec2.y;
@@ -298,7 +350,7 @@ let CollisionManager = cc.Class({
             _vec2.x = collider.radius;
             _vec2.y = 0;
 
-            math.vec2.transformMat4(_vec2, _vec2, m);
+            Vec2.transformMat4(_vec2, _vec2, m);
             let d = Math.sqrt(_vec2.x * _vec2.x + _vec2.y * _vec2.y);
 
             world.radius = d;
@@ -326,7 +378,7 @@ let CollisionManager = cc.Class({
                 _vec2.x = points[i].x + offset.x;
                 _vec2.y = points[i].y + offset.y;
                 
-                math.vec2.transformMat4(_vec2, _vec2, m);
+                Vec2.transformMat4(_vec2, _vec2, m);
                 
                 let x = _vec2.x;
                 let y = _vec2.y;

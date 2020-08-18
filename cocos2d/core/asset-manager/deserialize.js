@@ -23,44 +23,25 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-const js = require('../platform/js');
 const helper = require('./helper');
+const MissingClass = CC_EDITOR && Editor.require('app://editor/page/scene-utils/missing-class-reporter').MissingClass;
 require('../platform/deserialize');
 
-var MissingClass;
-
 function deserialize (json, options) {
-    if (!json) return new Error('empty json');
+    var classFinder, missingClass;
     if (CC_EDITOR) {
-        MissingClass = MissingClass || Editor.require('app://editor/page/scene-utils/missing-class-reporter').MissingClass;
-    }
-    var classFinder;
-    var isScene = helper.isSceneObj(json);
-    if (isScene) {
-        if (CC_EDITOR) {
-            MissingClass.hasMissingClass = false;
-            classFinder = function (type, data, owner, propName) {
-                var res = MissingClass.classFinder(type, data, owner, propName);
-                if (res) {
-                    return res;
-                }
-                return cc._MissingScript.getMissingWrapper(type, data);
-            };
-            classFinder.onDereferenced = MissingClass.classFinder.onDereferenced;
-        }
-        else {
-            classFinder = cc._MissingScript.safeFindClass;
-        }
+        missingClass = MissingClass;
+        classFinder = function (type, data, owner, propName) {
+            var res = missingClass.classFinder(type, data, owner, propName);
+            if (res) {
+                return res;
+            }
+            return cc._MissingScript;
+        };
+        classFinder.onDereferenced = missingClass.classFinder.onDereferenced;
     }
     else {
-        classFinder = function (id) {
-            var cls = js._getClassById(id);
-            if (cls) {
-                return cls;
-            }
-            cc.warnID(4903, id);
-            return Object;
-        };
+        classFinder = cc._MissingScript.safeFindClass;
     }
 
     var tdInfo = cc.deserialize.Details.pool.get();
@@ -74,11 +55,12 @@ function deserialize (json, options) {
     }
     catch (e) {
         cc.deserialize.Details.pool.put(tdInfo);
-        return e;
+        throw e;
     }
 
-    if (CC_EDITOR && isScene && MissingClass.hasMissingClass) {
-        MissingClass.reportMissingClass(asset);
+    if (CC_EDITOR && missingClass) {
+        missingClass.reportMissingClass(asset);
+        missingClass.reset();
     }
 
     var uuidList = tdInfo.uuidList;

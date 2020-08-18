@@ -42,6 +42,7 @@ const CHAR_CODE_1 = 49;    // '1'
 
 var idGenerater = new (require('../platform/id-generater'))('Tex');
 
+
 /**
  * <p>
  * This class allows to easily create OpenGL or Canvas 2D textures from images, text or raw data.                                    <br/>
@@ -281,7 +282,6 @@ function _getSharedOptions () {
     }
     _images.length = 0;
     _sharedOpts.images = _images;
-    _sharedOpts.flipY = false;
     return _sharedOpts;
 }
 
@@ -304,8 +304,8 @@ var Texture2D = cc.Class({
                 return this._image;
             },
             set (data) {
-                if (data.data) {
-                    this.initWithData(data.data, this._format, data.width, data.height);
+                if (data._compressed && data._data) {
+                    this.initWithData(data._data, this._format, data.width, data.height);
                 }
                 else {
                     this.initWithElement(data);
@@ -321,6 +321,8 @@ var Texture2D = cc.Class({
         _mipFilter: Filter.LINEAR,
         _wrapS: WrapMode.CLAMP_TO_EDGE,
         _wrapT: WrapMode.CLAMP_TO_EDGE,
+
+        _isAlphaAtlas: false,
 
         _genMipmaps: false,
         /**
@@ -364,7 +366,13 @@ var Texture2D = cc.Class({
         
         _nativeDep: {
             get () {
-                return {isNative: true, uuid: this._uuid, ext: this._native};
+                return {
+                    __isNative__: true, 
+                    uuid: this._uuid, 
+                    ext: this._native, 
+                    __flipY__: this._flipY,
+                    __premultiplyAlpha__: this._premultiplyAlpha
+                };
             },
             override: true
         }
@@ -377,20 +385,6 @@ var Texture2D = cc.Class({
         _FilterIndex: FilterIndex,
         // predefined most common extnames
         extnames: ['.png', '.jpg', '.jpeg', '.bmp', '.webp', '.pvr', '.pkm'],
-
-        _parseNativeDepFromJson (json) {
-            var data = json.content;
-            let fields = data.split(',');
-            // decode extname
-            var extIdStr = fields[0];
-            var ext = '';
-            if (extIdStr) {
-                var result = Texture2D._parseExt(extIdStr, PixelFormat.RGBA8888);
-                ext = result.bestExt || result.defaultExt;
-            }
-
-            return { isNative: true, ext };
-        },
 
         _parseExt (extIdStr, defaultFormat) {
             let device = cc.renderer.device;
@@ -434,11 +428,7 @@ var Texture2D = cc.Class({
                 }
             }
             return { bestExt, bestFormat, defaultExt };
-        },
-
-        _parseDepsFromJson () {
-            return [];
-        } 
+        }
     },
 
     ctor () {
@@ -557,28 +547,37 @@ var Texture2D = cc.Class({
                 this._genMipmaps = options.genMipmaps;
             }
 
-            if (updateImg && this._image) {
-                options.image = this._image;
+            if (cc.sys.capabilities.imageBitmap && this._image instanceof ImageBitmap) {
+                this._checkImageBitmap(this._upload.bind(this, options, updateImg));
             }
-            if (options.images && options.images.length > 0) {
-                this._image = options.images[0];
+            else {
+                this._upload(options, updateImg);
             }
-            else if (options.image !== undefined) {
-                this._image = options.image;
-                if (!options.images) {
-                    _images.length = 0;
-                    options.images = _images;
-                }
-                // webgl texture 2d uses images
-                options.images.push(options.image);
-            }
-
-            if (options.images && options.images.length > 0) {
-                this._texture.update(options);
-            }
-
-            this._hashDirty = true;
+            
         }
+    },
+
+
+    _upload (options, updateImg) {
+        if (updateImg && this._image) {
+            options.image = this._image;
+        }
+        if (options.images && options.images.length > 0) {
+            this._image = options.images[0];
+        }
+        else if (options.image !== undefined) {
+            this._image = options.image;
+            if (!options.images) {
+                _images.length = 0;
+                options.images = _images;
+            }
+            // webgl texture 2d uses images
+            options.images.push(options.image);
+        }
+
+        this._texture && this._texture.update(options);
+
+        this._hashDirty = true;
     },
 
     /**
@@ -596,8 +595,11 @@ var Texture2D = cc.Class({
         if (!element)
             return;
         this._image = element;
-        if (element.complete || element instanceof HTMLCanvasElement || (cc.sys.capabilities.createImageBitmap && element instanceof ImageBitmap)) {
+        if (element.complete || element instanceof HTMLCanvasElement) {
             this.handleLoadedTexture();
+        }
+        else if (cc.sys.capabilities.imageBitmap && element instanceof ImageBitmap) {
+            this._checkImageBitmap(this.handleLoadedTexture.bind(this));
         }
         else {
             var self = this;
@@ -612,10 +614,10 @@ var Texture2D = cc.Class({
 
     /**
      * !#en
-     * Intializes with a texture2d with data in Uint8Array.
-     * !#zh 使用一个存储在 Unit8Array 中的图像数据（raw data）初始化数据。
+     * Intializes with texture data in ArrayBufferView.
+     * !#zh 使用一个存储在 ArrayBufferView 中的图像数据（raw data）初始化数据。
      * @method initWithData
-     * @param {TypedArray} data
+     * @param {ArrayBufferView} data
      * @param {Number} pixelFormat
      * @param {Number} pixelsWidth
      * @param {Number} pixelsHeight
@@ -645,6 +647,7 @@ var Texture2D = cc.Class({
         this.width = pixelsWidth;
         this.height = pixelsHeight;
 
+        this._updateFormat();
         this._checkPackable();
 
         this.loaded = true;
@@ -670,7 +673,7 @@ var Texture2D = cc.Class({
     /**
      * !#en
      * Destory this texture and immediately release its video memory. (Inherit from cc.Object.destroy)<br>
-     * After destroy, this object is not usable any more.
+     * After destroy, this object is not usable anymore.
      * You can use cc.isValid(obj) to check whether the object is destroyed before accessing it.
      * !#zh
      * 销毁该贴图，并立即释放它对应的显存。（继承自 cc.Object.destroy）<br/>
@@ -679,6 +682,11 @@ var Texture2D = cc.Class({
      * @return {Boolean} inherit from the CCObject
      */
     destroy () {
+        if (cc.sys.capabilities.imageBitmap && this._image instanceof ImageBitmap) {
+            this._image.close && this._image.close();
+        }
+        this._packable && cc.dynamicAtlasManager && cc.dynamicAtlasManager.deleteAtlasTexture(this);
+
         this._image = null;
         this._texture && this._texture.destroy();
         this._super();
@@ -705,6 +713,10 @@ var Texture2D = cc.Class({
      */
     hasPremultipliedAlpha () {
         return this._premultiplyAlpha || false;
+    },
+
+    isAlphaAtlas () {
+        return this._isAlphaAtlas;
     },
 
     /**
@@ -743,14 +755,20 @@ var Texture2D = cc.Class({
             this._texture.update(opts);
         }
 
+        this._updateFormat();
         this._checkPackable();
 
         //dispatch load event to listener.
         this.loaded = true;
         this.emit("load");
 
-        if (cc.macro.CLEANUP_IMAGE_CACHE && this._image instanceof HTMLImageElement) {
-            this._clearImage();
+        if (cc.macro.CLEANUP_IMAGE_CACHE) {
+            if (this._image instanceof HTMLImageElement) {
+                this._clearImage();
+            }
+            else if (cc.sys.capabilities.imageBitmap && this._image instanceof ImageBitmap) {
+                this._image.close && this._image.close();
+            }
         }
     },
 
@@ -782,7 +800,7 @@ var Texture2D = cc.Class({
      * If the texture size is NPOT (non power of 2), then in can only use gl.CLAMP_TO_EDGE in gl.TEXTURE_WRAP_{S,T}.
      * !#zh 设置纹理包装模式。
      * 若纹理贴图尺寸是 NPOT（non power of 2），则只能使用 Texture2D.WrapMode.CLAMP_TO_EDGE。
-     * @method setTexParameters
+     * @method setWrapMode
      * @param {Texture2D.WrapMode} wrapS
      * @param {Texture2D.WrapMode} wrapT
      */
@@ -822,6 +840,7 @@ var Texture2D = cc.Class({
         if (this._flipY !== flipY) {
             var opts = _getSharedOptions();
             opts.flipY = flipY;
+            opts.premultiplyAlpha = this._premultiplyAlpha;
             this.update(opts);
         }
     },
@@ -836,8 +855,16 @@ var Texture2D = cc.Class({
     setPremultiplyAlpha (premultiply) {
         if (this._premultiplyAlpha !== premultiply) {
             var opts = _getSharedOptions();
+            opts.flipY = this._flipY;
             opts.premultiplyAlpha = premultiply;
             this.update(opts);
+        }
+    },
+
+    _updateFormat () {
+        this._isAlphaAtlas = this._format === PixelFormat.RGBA_ETC1 || this._format === PixelFormat.RGB_A_PVRTC_4BPPV1 || this._format === PixelFormat.RGB_A_PVRTC_2BPPV1;
+        if (CC_JSB) {
+            this._texture.setAlphaAtlas(this._isAlphaAtlas);
         }
     },
 
@@ -853,7 +880,6 @@ var Texture2D = cc.Class({
         let w = this.width, h = this.height;
         if (!this._image ||
             w > dynamicAtlas.maxFrameSize || h > dynamicAtlas.maxFrameSize || 
-            w <= dynamicAtlas.minFrameSize || h <= dynamicAtlas.minFrameSize || 
             this._getHash() !== dynamicAtlas.Atlas.DEFAULT_HASH) {
             this._packable = false;
             return;
@@ -950,7 +976,7 @@ var Texture2D = cc.Class({
             }
             else {
                 this._setRawAsset(result.defaultExt);
-                cc.warnID(3120, handle.customEnv.url, result.defaultExt, result.defaultExt);
+                cc.warnID(3120, result.defaultExt, result.defaultExt);
             }
         }
         if (fields.length === 8) {
@@ -981,9 +1007,9 @@ var Texture2D = cc.Class({
         let pixelFormat = this._format;
         let image = this._image;
         if (CC_JSB && image) {
-            if (image._glFormat !== GL_RGBA)
+            if (image._glFormat && image._glFormat !== GL_RGBA)
                 pixelFormat = 0;
-            premultiplyAlpha = image._premultiplyAlpha;
+            premultiplyAlpha = image._premultiplyAlpha ? 1 : 0;
         }
 
         this._hash = Number(`${minFilter}${magFilter}${pixelFormat}${wrapS}${wrapT}${genMipmaps}${premultiplyAlpha}${flipY}`);
@@ -992,11 +1018,34 @@ var Texture2D = cc.Class({
     },
 
     _isCompressed () {
-        return this._texture && this._texture._compressed;
+        return this._format < PixelFormat.A8 || this._format > PixelFormat.RGBA32F;
     },
     
     _clearImage () {
         this._image.src = "";
+    },
+
+    _checkImageBitmap (cb) {
+        let image = this._image;
+        let flipY = this._flipY;
+        let premultiplyAlpha = this._premultiplyAlpha;
+        if (this._flipY !== image.flipY || this._premultiplyAlpha !== image.premultiplyAlpha) {
+            createImageBitmap(image, {
+                imageOrientation: flipY !== image.flipY ? 'flipY' : 'none',
+                premultiplyAlpha: premultiplyAlpha ? 'premultiply' : 'none'}
+                ).then((result) => {
+                    image.close && image.close();
+                    result.flipY = flipY;
+                    result.premultiplyAlpha = premultiplyAlpha;
+                    this._image = result;
+                    cb();
+                }, (err) => {
+                    cc.error(err.message);
+                });
+        }
+        else {
+            cb();
+        }
     }
 });
 

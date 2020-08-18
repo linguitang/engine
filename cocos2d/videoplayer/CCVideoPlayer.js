@@ -181,6 +181,16 @@ let VideoPlayer = cc.Class({
             },
             get: function () {
                 if (this._impl) {
+                    // for used to make the current time of each platform consistent
+                    if (this._currentStatus === EventType.NONE ||
+                        this._currentStatus === EventType.STOPPED ||
+                        this._currentStatus === EventType.META_LOADED ||
+                        this._currentStatus === EventType.READY_TO_PLAY) {
+                        return 0;
+                    }
+                    else if (this._currentStatus === EventType.COMPLETED) {
+                        return this._impl.duration();
+                    }
                     return this._impl.currentTime();
                 }
                 return -1;
@@ -258,12 +268,16 @@ let VideoPlayer = cc.Class({
         },
         isFullscreen: {
             get () {
-                this._isFullscreen = this._impl && this._impl.isFullScreenEnabled();
+                if (!CC_EDITOR) {
+                    this._isFullscreen = this._impl && this._impl.isFullScreenEnabled();
+                }
                 return this._isFullscreen;
             },
             set (enable) {
                 this._isFullscreen = enable;
-                this._impl && this._impl.setFullScreenEnabled(enable);
+                if (!CC_EDITOR) {
+                    this._impl && this._impl.setFullScreenEnabled(enable);
+                }
             },
             animatable: false,
             tooltip: CC_DEV && 'i18n:COMPONENT.videoplayer.isFullscreen'
@@ -308,6 +322,7 @@ let VideoPlayer = cc.Class({
 
     ctor () {
         this._impl = new VideoPlayerImpl();
+        this._currentStatus = EventType.NONE;
     },
 
     _syncVolume () {
@@ -327,21 +342,21 @@ let VideoPlayer = cc.Class({
             url = this._clip.nativeUrl;
         }
         this._impl.setURL(url, this._mute || this._volume === 0);
+        this._impl.setKeepAspectRatioEnabled(this.keepAspectRatio);
     },
 
     onLoad () {
         let impl = this._impl;
         if (impl) {
             impl.createDomElementIfNeeded(this._mute || this._volume === 0);
+            impl.setStayOnBottom(this._stayOnBottom);
             this._updateVideoSource();
 
-            impl.seekTo(this.currentTime);
-            impl.setKeepAspectRatioEnabled(this.keepAspectRatio);
-            impl.setFullScreenEnabled(this.isFullscreen);
-            impl.setStayOnBottom(this._stayOnBottom);
-            this.pause();
-
             if (!CC_EDITOR) {
+                impl.seekTo(this.currentTime);
+                impl.setFullScreenEnabled(this._isFullscreen);
+                this.pause();
+
                 impl.setEventListener(EventType.PLAYING, this.onPlaying.bind(this));
                 impl.setEventListener(EventType.PAUSED, this.onPasued.bind(this));
                 impl.setEventListener(EventType.STOPPED, this.onStopped.bind(this));
@@ -385,36 +400,43 @@ let VideoPlayer = cc.Class({
     },
 
     onReadyToPlay () {
+        this._currentStatus = EventType.READY_TO_PLAY;
         cc.Component.EventHandler.emitEvents(this.videoPlayerEvent, this, EventType.READY_TO_PLAY);
         this.node.emit('ready-to-play', this);
     },
 
     onMetaLoaded () {
+        this._currentStatus = EventType.META_LOADED;
         cc.Component.EventHandler.emitEvents(this.videoPlayerEvent, this, EventType.META_LOADED);
         this.node.emit('meta-loaded', this);
     },
 
     onClicked () {
+        this._currentStatus = EventType.CLICKED;
         cc.Component.EventHandler.emitEvents(this.videoPlayerEvent, this, EventType.CLICKED);
         this.node.emit('clicked', this);
     },
 
     onPlaying () {
+        this._currentStatus = EventType.PLAYING;
         cc.Component.EventHandler.emitEvents(this.videoPlayerEvent, this, EventType.PLAYING);
         this.node.emit('playing', this);
     },
 
     onPasued () {
+        this._currentStatus = EventType.PAUSED;
         cc.Component.EventHandler.emitEvents(this.videoPlayerEvent, this, EventType.PAUSED);
         this.node.emit('paused', this);
     },
 
     onStopped () {
+        this._currentStatus = EventType.STOPPED;
         cc.Component.EventHandler.emitEvents(this.videoPlayerEvent, this, EventType.STOPPED);
         this.node.emit('stopped', this);
     },
 
     onCompleted () {
+        this._currentStatus = EventType.COMPLETED;
         cc.Component.EventHandler.emitEvents(this.videoPlayerEvent, this, EventType.COMPLETED);
         this.node.emit('completed', this);
     },

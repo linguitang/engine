@@ -724,7 +724,6 @@ test('simplified properties define', function () {
             empty: [],
             valueType: [cc.Vec2],
             node: [cc.Node],
-            rawAsset: [cc.RawAsset],
             asset: {
                 default: [],
                 type: cc.Asset
@@ -738,13 +737,10 @@ test('simplified properties define', function () {
     strictEqual(cc.Class.attr(ArrayType, 'valueType').ctor, cc.Vec2, 'checking array of vec2 ctor');
     strictEqual(cc.Class.attr(ArrayType, 'node').type, 'Object', 'checking array of node type');
     strictEqual(cc.Class.attr(ArrayType, 'node').ctor, cc.Node, 'checking array of node ctor');
-    strictEqual(cc.Class.attr(ArrayType, 'rawAsset').type, 'Object', 'checking array of raw asset type');
-    strictEqual(cc.Class.attr(ArrayType, 'rawAsset').ctor, cc.RawAsset, 'checking array of raw asset ctor');
 
     deepEqual(arrayObj.empty, [], 'checking array of empty');
     deepEqual(arrayObj.valueType, [], 'checking array of valueType');
     deepEqual(arrayObj.node, [], 'checking array of node');
-    deepEqual(arrayObj.rawAsset, [], 'checking array of rawAsset');
     deepEqual(arrayObj.asset, [], 'checking array of asset');
 });
 
@@ -798,6 +794,52 @@ test('simplified properties define using cc.xxxType', function () {
     deepEqual(arrayObj.int, [], 'checking array of int');
 });
 
+// test('formerlySerializedAs', function () {
+//     var MyClass0 = cc.Class({});
+//     ok(!MyClass0.__FSA__, 'should not tagged as fsa on normal class');
+//
+//     var MyClass3 = cc.Class({
+//         properties: {
+//             prop: {
+//                 default: '',
+//                 formerlySerializedAs: 'oldProp'
+//             }
+//         }
+//     });
+//     ok(MyClass3.__FSA__, 'should tagged as fsa on MyClass3');
+//
+//     var Base = cc.Class({
+//         properties: {
+//             prop: {
+//                 default: '',
+//                 formerlySerializedAs: 'oldProp'
+//             }
+//         }
+//     });
+//     var Mix = cc.Class({});
+//     var MyClass = cc.Class({
+//         extends: Base,
+//         mixins: [Mix]
+//     });
+//     ok(MyClass.__FSA__, 'should tagged as fsa on MyClass');
+//
+//     var Base2 = cc.Class({});
+//     var Mix2 = cc.Class({
+//         properties: {
+//             prop: {
+//                 default: '',
+//                 formerlySerializedAs: 'oldProp'
+//             }
+//         }
+//     });
+//     var MyClass2 = cc.Class({
+//         extends: Base2,
+//         mixins: [Mix2]
+//     });
+//     ok(MyClass2.__FSA__, 'should tagged as fsa on MyClass2');
+//
+//     cc.js.unregisterClass(Base, Mix, MyClass, Base2, Mix2, MyClass2, MyClass0, MyClass3);
+// });
 
 // test('call CCClass', function () {
 //     var Husky = cc.Class({

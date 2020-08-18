@@ -155,7 +155,7 @@
 
     asyncTest('revert prefab', function () {
         // stub
-        cc.assetManager._pipeline.insert(function (task, done) {
+        cc.assetManager.pipeline.insert(function (task, done) {
             var input = task.input;
             input.forEach(function (item) {
                 if (item.uuid === UUID) {
@@ -189,8 +189,8 @@
         testNode.insertChild(newNode2, 0);
 
         var PrefabUtils = Editor.require('scene://utils/prefab');
-        PrefabUtils.revertPrefab(testNode, function () {
-            cc.assetManager._pipeline.remove(1);
+        PrefabUtils.revertPrefab(testNode, PrefabUtils.Deep.None, function () {
+            cc.assetManager.pipeline.remove(1);
             ok(testNode.x != prefab.data.x, 'Should not revert root position');
             ok(testNode.scaleX === 123 && testNode.scaleY === 432, 'Revert property of the parent node');
             ok(testNode.getComponent(TestScript).constructor === TestScript, 'Restore removed component');

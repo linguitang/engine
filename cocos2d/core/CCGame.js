@@ -424,14 +424,14 @@ var game = {
      * @typescript
      * on<T extends Function>(type: string, callback: T, target?: any, useCapture?: boolean): T
      */
-    on (type, callback, target) {
+    on (type, callback, target, once) {
         // Make sure EVENT_ENGINE_INITED and EVENT_GAME_INITED callbacks to be invoked
         if ((this._prepared && type === this.EVENT_ENGINE_INITED) ||
             (!this._paused && type === this.EVENT_GAME_INITED)) {
             callback.call(target);
         }
         else {
-            this.eventTargetOn(type, callback, target);
+            this.eventTargetOn(type, callback, target, once);
         }
     },
     /**
@@ -476,28 +476,9 @@ var game = {
             return;
         }
 
-        // Load game scripts
-        let jsList = this.config.jsList;
-        if (jsList && jsList.length > 0) {
-            var self = this;
-            var count = 0;
-            for (var i = 0, l = jsList.length; i < l; i++) {
-                cc.assetManager.loadScript(jsList[i], function (err) {
-                    if (err) throw new Error(JSON.stringify(err));
-                    count++;
-                    if (count === l) {
-                        self._loadPreviewScript(() => {
-                            self._prepareFinished(cb);
-                        });
-                    }
-                });
-            }
-        }
-        else {
-            this._loadPreviewScript(() => {
-                this._prepareFinished(cb);
-            })
-        }
+        this._loadPreviewScript(() => {
+            this._prepareFinished(cb);
+        });
     },
 
     /**
@@ -547,7 +528,7 @@ var game = {
             }
             this._persistRootNodes[id] = node;
             node._persistNode = true;
-            cc.assetManager.finalizer._addPersistNodeRef(node);
+            cc.assetManager._releaseManager._addPersistNodeRef(node);
         }
     },
 
@@ -562,7 +543,7 @@ var game = {
         if (node === this._persistRootNodes[id]) {
             delete this._persistRootNodes[id];
             node._persistNode = false;
-            cc.assetManager.finalizer._removePersistNodeRef(node);
+            cc.assetManager._releaseManager._removePersistNodeRef(node);
         }
     },
 
@@ -673,7 +654,12 @@ var game = {
         if (typeof config.registerSystemEvent !== 'boolean') {
             config.registerSystemEvent = true;
         }
-        config.showFPS = !!config.showFPS;
+        if (renderMode === 1) {
+            config.showFPS = false;    
+        }
+        else {
+            config.showFPS = !!config.showFPS;
+        }
 
         // Collide Map and Group List
         this.collisionMatrix = config.collisionMatrix || [];
@@ -740,9 +726,16 @@ var game = {
 
                 //it is already a canvas, we wrap it around with a div
                 this.canvas = localCanvas = element;
-                this.container = localContainer = document.createElement("DIV");
-                if (localCanvas.parentNode)
-                    localCanvas.parentNode.insertBefore(localContainer, localCanvas);
+                if (CC_EDITOR) {
+                    //it is already a canvas, we wrap it around with a div
+                    this.container = localContainer = document.createElement("DIV");
+                    if (localCanvas.parentNode)
+                        localCanvas.parentNode.insertBefore(localContainer, localCanvas);
+                }
+                else {
+                    // Can not move the existing canvas's position in iOS 14, so use canvas.parentNode as container
+                    this.container = localContainer = localCanvas.parentNode;
+                }
             } else {
                 //we must make a new canvas and place into this element
                 if (element.tagName !== "DIV") {
@@ -753,9 +746,10 @@ var game = {
                 this.canvas = localCanvas = document.createElement("CANVAS");
                 this.container = localContainer = document.createElement("DIV");
                 element.appendChild(localContainer);
+                localCanvas.setAttribute('id', 'GameCanvas');
             }
             localContainer.setAttribute('id', 'Cocos2dGameContainer');
-            localContainer.appendChild(localCanvas);
+            localCanvas.parentNode !== localContainer && localContainer.appendChild(localCanvas);
             this.frame = (localContainer.parentNode === document.body) ? document.documentElement : localContainer.parentNode;
 
             function addClass (element, name) {
@@ -809,7 +803,7 @@ var game = {
 
         // register system events
         if (this.config.registerSystemEvent)
-            _cc.inputManager.registerSystemEvent(this.canvas);
+            cc.internal.inputManager.registerSystemEvent(this.canvas);
 
         if (typeof document.hidden !== 'undefined') {
             hiddenPropName = "hidden";

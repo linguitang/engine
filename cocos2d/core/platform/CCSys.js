@@ -32,6 +32,8 @@ const isVivoGame = (settingPlatform === 'qgame');
 const isOppoGame = (settingPlatform === 'quickgame');
 const isHuaweiGame = (settingPlatform === 'huawei');
 const isJKWGame = (settingPlatform === 'jkw-game');
+const isQttGame = (settingPlatform === 'qtt-game');
+const isLinkSure = (settingPlatform === 'link-sure');
 
 const _global = typeof window === 'undefined' ? global : window;
  
@@ -419,61 +421,36 @@ function initSys () {
      */
     sys.BAIDU_GAME_SUB = 115;
     /**
+     * @property {Number} QTT_GAME
+     * @readOnly
+     * @default 116
+     */
+    sys.QTT_GAME = 116;
+    /**
+     * @property {Number} BYTEDANCE_GAME
+     * @readOnly
+     * @default 117
+     */
+    sys.BYTEDANCE_GAME = 117;
+    /**
+     * @property {Number} BYTEDANCE_GAME_SUB
+     * @readOnly
+     * @default 118
+     */
+    sys.BYTEDANCE_GAME_SUB = 118;
+    /**
+     * @property {Number} LINKSURE
+     * @readOnly
+     * @default 119
+     */
+    sys.LINKSURE = 119;
+    /**
      * BROWSER_TYPE_WECHAT
      * @property {String} BROWSER_TYPE_WECHAT
      * @readOnly
      * @default "wechat"
      */
     sys.BROWSER_TYPE_WECHAT = "wechat";
-    /**
-     * BROWSER_TYPE_WECHAT_GAME
-     * @property {String} BROWSER_TYPE_WECHAT_GAME
-     * @readOnly
-     * @default "wechatgame"
-     */
-    sys.BROWSER_TYPE_WECHAT_GAME = "wechatgame";
-    /**
-     * BROWSER_TYPE_WECHAT_GAME_SUB
-     * @property {String} BROWSER_TYPE_WECHAT_GAME_SUB
-     * @readOnly
-     * @default "wechatgamesub"
-     */
-    sys.BROWSER_TYPE_WECHAT_GAME_SUB = "wechatgamesub";
-    /**
-     * BROWSER_TYPE_BAIDU_GAME
-     * @property {String} BROWSER_TYPE_BAIDU_GAME
-     * @readOnly
-     * @default "baidugame"
-     */
-    sys.BROWSER_TYPE_BAIDU_GAME = "baidugame";
-    /**
-     * BROWSER_TYPE_BAIDU_GAME_SUB
-     * @property {String} BROWSER_TYPE_BAIDU_GAME_SUB
-     * @readOnly
-     * @default "baidugamesub"
-     */
-    sys.BROWSER_TYPE_BAIDU_GAME_SUB = "baidugamesub";
-    /**
-     * BROWSER_TYPE_XIAOMI_GAME
-     * @property {String} BROWSER_TYPE_XIAOMI_GAME
-     * @readOnly
-     * @default "xiaomigame"
-     */
-    sys.BROWSER_TYPE_XIAOMI_GAME = "xiaomigame";
-    /**
-     * BROWSER_TYPE_ALIPAY_GAME
-     * @property {String} BROWSER_TYPE_ALIPAY_GAME
-     * @readOnly
-     * @default "alipaygame"
-     */
-    sys.BROWSER_TYPE_ALIPAY_GAME = "alipaygame";
-    /**
-     * BROWSER_TYPE_QQ_PLAY
-     * @property {String} BROWSER_TYPE_QQ_PLAY
-     * @readOnly
-     * @default "qqplay"
-     */
-    sys.BROWSER_TYPE_QQ_PLAY = "qqplay";
     /**
      *
      * @property {String} BROWSER_TYPE_ANDROID
@@ -628,7 +605,6 @@ function initSys () {
      */
     sys.isNative = CC_JSB || CC_RUNTIME;
 
-
     /**
      * Is web browser ?
      * @property {Boolean} isBrowser
@@ -665,6 +641,20 @@ function initSys () {
         return sys._maxJointMatrixSize;
     }
 
+    /**
+     * !#en
+     * Returns the safe area of the screen. If the screen is not notched, the design resolution will be returned by default.
+     * Only supported on Android, iOS and WeChat Mini Game platform.
+     * !#zh
+     * 返回手机屏幕安全区域，如果不是异形屏将默认返回设计分辨率尺寸。目前只支持安卓、iOS 原生平台和微信小游戏平台。
+     * @method getSafeAreaRect
+     * @return {Rect}
+    */
+   sys.getSafeAreaRect = function () {
+        let visibleSize = cc.view.getVisibleSize();
+        return cc.rect(0, 0, visibleSize.width, visibleSize.height);
+    };
+
     if (_global.__globalAdapter && _global.__globalAdapter.adaptSys) {
         // init sys info in adapter
         _global.__globalAdapter.adaptSys(sys);
@@ -685,6 +675,9 @@ function initSys () {
             width: 0,
             height: 0
         };
+        sys.capabilities = {
+            'imageBitmap': false
+        };
         sys.__audioSupport = {};
     }
     else if (CC_JSB || CC_RUNTIME) {
@@ -697,6 +690,10 @@ function initSys () {
             platform = sys.HUAWEI_GAME;
         } else if (isJKWGame) {
             platform = sys.JKW_GAME;
+        } else if (isQttGame) {
+            platform = sys.QTT_GAME;
+        } else if (isLinkSure) {
+            platform = sys.LINKSURE;
         }
         else {
             platform = __getPlatform();
@@ -712,7 +709,8 @@ function initSys () {
                         isVivoGame ||
                         isOppoGame ||
                         isHuaweiGame ||
-                        isJKWGame);
+                        isJKWGame ||
+                        isQttGame);
 
         sys.os = __getOS();
         sys.language = __getCurrentLanguage();
@@ -753,7 +751,7 @@ function initSys () {
             capabilities["touches"] = false;
         }
 
-        capabilities['createImageBitmap'] = typeof createImageBitmap !== 'undefined';
+        capabilities['imageBitmap'] = false;
 
         sys.__audioSupport = {
             ONLY_ONE: false,
@@ -811,7 +809,7 @@ function initSys () {
 
         // Get the os of system
         var isAndroid = false, iOS = false, osVersion = '', osMainVersion = 0;
-        var uaResult = /android (\d+(?:\.\d+)*)/i.exec(ua) || /android (\d+(?:\.\d+)*)/i.exec(nav.platform);
+        var uaResult = /android\s*(\d+(?:\.\d+)*)/i.exec(ua) || /android\s*(\d+(?:\.\d+)*)/i.exec(nav.platform);
         if (uaResult) {
             isAndroid = true;
             osVersion = uaResult[1] || '';
@@ -824,7 +822,11 @@ function initSys () {
             osMainVersion = parseInt(osVersion) || 0;
         }
         // refer to https://github.com/cocos-creator/engine/pull/5542 , thanks for contribition from @krapnikkk
-        else if (/(iPhone|iPad|iPod|MacIntel)/.exec(nav.platform)) { 
+        // ipad OS 13 safari identifies itself as "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 (KHTML, like Gecko)" 
+        // so use maxTouchPoints to check whether it's desktop safari or not. 
+        // reference: https://stackoverflow.com/questions/58019463/how-to-detect-device-name-in-safari-on-ios-13-while-it-doesnt-show-the-correct
+        // FIXME: should remove it when touch-enabled macs are available
+        else if (/(iPhone|iPad|iPod)/.exec(nav.platform) || (nav.platform === 'MacIntel' && nav.maxTouchPoints && nav.maxTouchPoints > 1)) { 
             iOS = true;
             osVersion = '';
             osMainVersion = 0;
@@ -856,7 +858,7 @@ function initSys () {
 
         /**
          * Indicate the running browser type
-         * @property {String} browserType
+         * @property {String | null} browserType
          */
         sys.browserType = sys.BROWSER_TYPE_UNKNOWN;
         /* Determine the browser type */
@@ -887,7 +889,7 @@ function initSys () {
 
         /**
          * Indicate the running browser version
-         * @property {String} browserVersion
+         * @property {String | null} browserVersion
          */
         sys.browserVersion = "";
         /* Determine the browser version number */
@@ -975,8 +977,16 @@ function initSys () {
             "canvas": _supportCanvas,
             "opengl": _supportWebGL,
             "webp": _supportWebp,
-            'createImageBitmap': typeof createImageBitmap !== 'undefined',
+            'imageBitmap': false,
         };
+
+        if (typeof createImageBitmap !== 'undefined' && typeof Blob !== 'undefined') {
+            _tmpCanvas1.width = _tmpCanvas1.height = 2;
+            createImageBitmap(_tmpCanvas1, {}).then(imageBitmap => {
+                capabilities.imageBitmap = true;
+                imageBitmap.close && imageBitmap.close();
+            }).catch(err => {});
+        }
         if (docEle['ontouchstart'] !== undefined || doc['ontouchstart'] !== undefined || nav.msPointerEnabled)
             capabilities["touches"] = true;
         if (docEle['onmouseup'] !== undefined)
@@ -1125,7 +1135,7 @@ function initSys () {
      * 获取当前设备的网络类型, 如果网络类型无法获取，默认将返回 cc.sys.NetworkType.LAN
      *
      * @method getNetworkType
-     * @return {NetworkType}
+     * @return {sys.NetworkType}
      */
     sys.getNetworkType = function() {
         // TODO: need to implement this for mobile phones.
@@ -1160,20 +1170,6 @@ function initSys () {
      */
     sys.restartVM = function () {
         // N/A in web
-    };
-
-    /**
-     * !#en
-     * Return the safe area rect. <br/>
-     * only available on the iOS native platform, otherwise it will return a rect with design resolution size.
-     * !#zh
-     * 返回手机屏幕安全区域，目前仅在 iOS 原生平台有效。其它平台将默认返回设计分辨率尺寸。
-     * @method getSafeAreaRect
-     * @return {Rect}
-    */
-    sys.getSafeAreaRect = function () {
-        let visibleSize = cc.view.getVisibleSize();
-        return cc.rect(0, 0, visibleSize.width, visibleSize.height);
     };
 
     /**

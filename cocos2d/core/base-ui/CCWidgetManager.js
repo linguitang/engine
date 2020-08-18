@@ -24,7 +24,12 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-var Event = require('../CCNode').EventType;
+var Event;
+
+// Support serializing widget in asset db, see cocos-creator/2d-tasks/issues/1894
+if (!CC_EDITOR || !Editor.isMainProcess) {
+  Event = require('../CCNode').EventType;
+}
 
 var TOP     = 1 << 0;
 var MID     = 1 << 1;   // vertical center
@@ -232,7 +237,7 @@ function visitNode (node) {
         }
         align(node, widget);
         if ((!CC_EDITOR || animationState.animatedSinceLastFrame) && widget.alignMode !== AlignMode.ALWAYS) {
-            widget.enabled = false;
+            widgetManager.remove(widget);
         }
         else {
             activeWidgets.push(widget);
@@ -315,7 +320,7 @@ function refreshScene () {
                             node.isChildOf(editingNode)
                         ) {
                             // widget contains in activeWidgets should aligned at least once
-                            widget.enabled = false;
+                            widgetManager.remove(widget);
                         }
                         else {
                             align(node, widget);
@@ -459,12 +464,9 @@ var widgetManager = cc._widgetManager = module.exports = {
             cc.engine.on('design-resolution-changed', this.onResized.bind(this));
         }
         else {
-            if (cc.sys.isMobile) {
-                window.addEventListener('resize', this.onResized.bind(this));
-            }
-            else {
-                cc.view.on('canvas-resize', this.onResized, this);
-            }
+            let thisOnResized = this.onResized.bind(this);
+            window.addEventListener('resize', thisOnResized);
+            window.addEventListener('orientationchange', thisOnResized);
         }
     },
     add: function (widget) {
@@ -491,10 +493,8 @@ var widgetManager = cc._widgetManager = module.exports = {
     },
     refreshWidgetOnResized (node) {
         var widget = cc.Node.isNode(node) && node.getComponent(cc.Widget);
-        if (widget) {
-            if (widget.alignMode === AlignMode.ON_WINDOW_RESIZE) {
-                widget.enabled = true;
-            }
+        if (widget && widget.enabled && widget.alignMode === AlignMode.ON_WINDOW_RESIZE) {
+            this.add(widget);
         }
 
         var children = node._children;

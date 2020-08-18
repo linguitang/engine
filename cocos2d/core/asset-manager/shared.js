@@ -31,20 +31,86 @@ var parsed = new Cache();
 var bundles = new Cache();
 var pipeline = new Pipeline('normal load', []);
 var fetchPipeline = new Pipeline('fetch', []);
-var initializePipeline = new Pipeline('initialize', []);
 var transformPipeline = new Pipeline('transform url', []);
 
-var LoadStrategy = {
-    NORMAL: 0,
-    PRELOAD: 1
-};
+/**
+ * @module cc.AssetManager
+ */
 
 var RequestType = {
+    
     UUID: 'uuid',
+
     PATH: 'path',
+
     DIR: 'dir',
+
     URL: 'url',
+
     SCENE: 'scene'
 };
 
-module.exports = {assets, files, parsed, pipeline, fetchPipeline, initializePipeline, transformPipeline, LoadStrategy, RequestType, bundles};
+/**
+ * !#en
+ * The builtin bundles 
+ * 
+ * !#zh
+ * 内置 bundle
+ * 
+ * @enum BuiltinBundleName
+ */
+var BuiltinBundleName = {
+    /**
+     * !#en
+     * The builtin bundle corresponds to 'assets/resources'.
+     * 
+     * !#zh
+     * 内置 bundle, 对应 'assets/resources' 目录
+     * 
+     * @property RESOURCES
+     * @readonly
+     * @type {String}
+     */
+    RESOURCES: 'resources',
+
+    /**
+     * !#en
+     * The builtin bundle corresponds to 'internal/resources'.
+     * 
+     * !#zh
+     * 内置 bundle, 对应 'internal/resources' 目录
+     * 
+     * @property INTERNAL
+     * @readonly
+     * @type {String}
+     */
+    INTERNAL: 'internal',
+
+    /**
+     * !#en
+     * The builtin bundle
+     * 
+     * !#zh
+     * 内置 bundle
+     * 
+     * @property MAIN
+     * @readonly
+     * @type {String}
+     */
+    MAIN: 'main',
+
+    /**
+     * !#en
+     * The builtin bundle, exists when Start Scene asset bundle is checked on the project building panel
+     * 
+     * !#zh
+     * 内置 bundle, 如果构建面板开启了首场景分包，则会有 START_SCENE bundle
+     * 
+     * @property START_SCENE
+     * @readonly
+     * @type {String}
+     */
+    START_SCENE: 'start-scene',
+};
+
+module.exports = { assets, files, parsed, pipeline, fetchPipeline, transformPipeline, RequestType, bundles, BuiltinBundleName };

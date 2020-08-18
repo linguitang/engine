@@ -24,17 +24,19 @@
  ****************************************************************************/
 const packManager = require('./pack-manager');
 const Task = require('./task');
-const {getDepends, clear, forEach} = require('./utilities');
-const {assets, fetchPipeline} = require('./shared');
+const { getDepends, clear, forEach } = require('./utilities');
+const { assets, fetchPipeline } = require('./shared');
 
 function fetch (task, done) {
 
+    let firstTask = false;
     if (!task.progress) {
         task.progress = { finish: 0, total: task.input.length }; 
+        firstTask = true;
     }
 
-    var options = task.options, depends = [], progress = task.progress, total = progress.total;
-    options.exclude = options.exclude || Object.create(null);
+    let options = task.options, depends = [], progress = task.progress, total = progress.total;
+    options.__exclude__ = options.__exclude__ || Object.create(null);
 
     task.output = [];
 
@@ -42,8 +44,8 @@ function fetch (task, done) {
         
         if (!item.isNative && assets.has(item.uuid)) {
             var asset = assets.get(item.uuid);
-            asset._addRef();
-            handle(item, task, asset, null, asset.__nativeDepend__, depends, total, done);
+            asset.addRef();
+            handle(item, task, asset, null, asset.__asyncLoadAssets__, depends, total, done);
             return cb();
         }
 
@@ -51,6 +53,7 @@ function fetch (task, done) {
             if (err) {
                 if (!task.isFinish) {
                     if (!cc.assetManager.force) {
+                        cc.error(err.message, err.stack);
                         done(err);
                     }
                     else {
@@ -82,22 +85,31 @@ function fetch (task, done) {
                 onError: Task.prototype.recycle,
                 onComplete: function (err) {
                     if (!err) {
-                        subTask.recycle();
                         task.output.push.apply(task.output, this.output);
+                        subTask.recycle();
                     }
+                    if (firstTask) decreaseRef(task);
                     done(err);
                 },
             });
             fetchPipeline.async(subTask);
             return;
         }
+        if (firstTask) decreaseRef(task);
         done();
     });
 }
 
+function decreaseRef (task) {
+    let output = task.output;
+    for (let i = 0, l = output.length; i < l; i++) {
+        output[i].content && output[i].content.decRef(false);
+    }
+}
+
 function handle (item, task, content, file, loadDepends, depends, last, done) {
 
-    var exclude = task.options.exclude;
+    var exclude = task.options.__exclude__;
     var progress = task.progress;
 
     item.content = content;
@@ -106,9 +118,10 @@ function handle (item, task, content, file, loadDepends, depends, last, done) {
 
     if (loadDepends) {
         exclude[item.uuid] = true;
-        var err = getDepends(item.uuid, file, exclude, depends, true, item.config);
+        var err = getDepends(item.uuid, file || content, exclude, depends, true, false, item.config);
         if (err) {
             if (!cc.assetManager.force) {
+                cc.error(err.message, err.stack);
                 return done(err);
             }
             item.file = null;

@@ -206,6 +206,14 @@ cc.Director.prototype = {
             this._physicsManager = null;
         }
 
+        // physics 3d manager
+        if (cc.Physics3DManager && (CC_PHYSICS_BUILTIN || CC_PHYSICS_CANNON)) {
+            this._physics3DManager = new cc.Physics3DManager();
+            this._scheduler.scheduleUpdate(this._physics3DManager, Scheduler.PRIORITY_SYSTEM, false);
+        } else {
+            this._physics3DManager = null;
+        }
+
         // WidgetManager
         if (cc._widgetManager) {
             cc._widgetManager.init(this);
@@ -217,16 +225,12 @@ cc.Director.prototype = {
      */
     calculateDeltaTime: function (now) {
         if (!now) now = performance.now();
-        this._deltaTime = (now - this._lastUpdate) / 1000;
-        if (CC_DEBUG && (this._deltaTime > 1))
-            this._deltaTime = 1 / 60.0;
 
         // avoid delta time from being negative
         // negative deltaTime would be caused by the precision of now's value, for details please see: https://developer.mozilla.org/zh-CN/docs/Web/API/window/requestAnimationFrame
-        if (this._deltaTime < 0) {
-            this.calculateDeltaTime();
-            return;
-        }
+        this._deltaTime = now > this._lastUpdate ? (now - this._lastUpdate) / 1000 : 0;
+        if (CC_DEBUG && (this._deltaTime > 1))
+            this._deltaTime = 1 / 60.0;
 
         this._lastUpdate = now;
     },
@@ -340,7 +344,7 @@ cc.Director.prototype = {
      * @deprecated since v2.0
      */
     purgeCachedData: function () {
-        cc.assetManager.releaseAll(true);
+        cc.assetManager.releaseAll();
     },
 
     /**
@@ -370,7 +374,7 @@ cc.Director.prototype = {
         cc.game.pause();
 
         // Clear all caches
-        cc.assetManager.releaseAll(true);
+        cc.assetManager.releaseAll();
     },
 
     /**
@@ -411,12 +415,14 @@ cc.Director.prototype = {
      * The new scene will be launched immediately.
      * !#zh 立刻切换指定场景。
      * @method runSceneImmediate
-     * @param {Scene} scene - The need run scene.
+     * @param {Scene|SceneAsset} scene - The need run scene.
      * @param {Function} [onBeforeLoadScene] - The function invoked at the scene before loading.
      * @param {Function} [onLaunched] - The function invoked at the scene after launch.
      */
     runSceneImmediate: function (scene, onBeforeLoadScene, onLaunched) {
-        cc.assertID(scene instanceof cc.Scene, 1216);
+        cc.assertID(scene instanceof cc.Scene || scene instanceof cc.SceneAsset, 1216);
+
+        if (scene instanceof cc.SceneAsset) scene = scene.scene;
 
         CC_BUILD && CC_DEBUG && console.time('InitScene');
         scene._load();  // ensure scene initialized
@@ -446,7 +452,7 @@ cc.Director.prototype = {
         if (!CC_EDITOR) {
             // auto release assets
             CC_BUILD && CC_DEBUG && console.time('AutoRelease');
-            cc.assetManager.finalizer._autoRelease(oldScene, scene, persistNodeList);
+            cc.assetManager._releaseManager._autoRelease(oldScene, scene, persistNodeList);
             CC_BUILD && CC_DEBUG && console.timeEnd('AutoRelease');
         }
 
@@ -489,20 +495,20 @@ cc.Director.prototype = {
      * The new scene will be launched at the end of the current frame.
      * !#zh 运行指定场景。
      * @method runScene
-     * @param {Scene} scene - The need run scene.
+     * @param {Scene|SceneAsset} scene - The need run scene.
      * @param {Function} [onBeforeLoadScene] - The function invoked at the scene before loading.
      * @param {Function} [onLaunched] - The function invoked at the scene after launch.
-     * @private
      */
     runScene: function (scene, onBeforeLoadScene, onLaunched) {
         cc.assertID(scene, 1205);
-        cc.assertID(scene instanceof cc.Scene, 1216);
+        cc.assertID(scene instanceof cc.Scene || scene instanceof cc.SceneAsset, 1216);
 
+        if (scene instanceof cc.SceneAsset) scene = scene.scene;
         // ensure scene initialized
         scene._load();
 
         // Delay run / replace scene to the end of the frame
-        this.once(cc.Director.EVENT_AFTER_UPDATE, function () {
+        this.once(cc.Director.EVENT_AFTER_DRAW, function () {
             this.runSceneImmediate(scene, onBeforeLoadScene, onLaunched);
         }, this);
     },
@@ -521,8 +527,8 @@ cc.Director.prototype = {
             cc.warnID(1208, sceneName, this._loadingScene);
             return false;
         }
-        var bundle = cc.assetManager._bundles.find(function (bundle) {
-            return bundle._config.getSceneInfo(sceneName);
+        var bundle = cc.assetManager.bundles.find(function (bundle) {
+            return bundle.getSceneInfo(sceneName);
         });
         if (bundle) {
             this.emit(cc.Director.EVENT_BEFORE_SCENE_LOADING, sceneName);
@@ -539,7 +545,6 @@ cc.Director.prototype = {
                 }
                 else {
                     self.runSceneImmediate(scene, _onUnloaded, onLaunched);
-                    return;
                 }
             });
             return true;
@@ -547,6 +552,38 @@ cc.Director.prototype = {
         else {
             cc.errorID(1209, sceneName);
             return false;
+        }
+    },
+
+     /**
+     * !#en
+     * Preloads the scene to reduces loading time. You can call this method at any time you want.
+     * After calling this method, you still need to launch the scene by `cc.director.loadScene`.
+     * It will be totally fine to call `cc.director.loadScene` at any time even if the preloading is not
+     * yet finished, the scene will be launched after loaded automatically.
+     * !#zh 预加载场景，你可以在任何时候调用这个方法。
+     * 调用完后，你仍然需要通过 `cc.director.loadScene` 来启动场景，因为这个方法不会执行场景加载操作。
+     * 就算预加载还没完成，你也可以直接调用 `cc.director.loadScene`，加载完成后场景就会启动。
+     *
+     * @method preloadScene
+     * @param {String} sceneName - The name of the scene to preload.
+     * @param {Function} [onProgress] - callback, will be called when the load progression change.
+     * @param {Number} onProgress.completedCount - The number of the items that are already completed
+     * @param {Number} onProgress.totalCount - The total number of the items
+     * @param {Object} onProgress.item - The latest item which flow out the pipeline
+     * @param {Function} [onLoaded] - callback, will be called after scene loaded.
+     * @param {Error} onLoaded.error - null or the error object.
+     */
+    preloadScene (sceneName, onProgress, onLoaded) {
+        var bundle = cc.assetManager.bundles.find(function (bundle) {
+            return bundle.getSceneInfo(sceneName);
+        });
+        if (bundle) {
+            bundle.preloadScene(sceneName, null, onProgress, onLoaded);
+        }
+        else {
+            cc.errorID(1209, sceneName);
+            return null;
         }
     },
 
@@ -768,6 +805,16 @@ cc.Director.prototype = {
         return this._physicsManager;
     },
 
+    /**
+     * !#en Returns the cc.Physics3DManager associated with this director.
+     * !#zh 返回与 director 相关联的 cc.Physics3DManager （物理管理器）。
+     * @method getPhysics3DManager
+     * @return {Physics3DManager}
+     */
+    getPhysics3DManager: function () {
+        return this._physics3DManager;
+    },
+
     // Loop management
     /*
      * Starts Animation
@@ -845,9 +892,6 @@ cc.Director.prototype = {
 
                 // Late update for components
                 this._compScheduler.lateUpdatePhase(this._deltaTime);
-
-                // After life-cycle executed
-                this._compScheduler.clearup();
 
                 // User can use this event to do things after update
                 this.emit(cc.Director.EVENT_AFTER_UPDATE);
@@ -1052,6 +1096,22 @@ cc.Director.PROJECTION_CUSTOM = 3;
  * @deprecated since v2.0
  */
 cc.Director.PROJECTION_DEFAULT = cc.Director.PROJECTION_2D;
+
+/**
+ * The event which will be triggered before the physics process.<br/>
+ * 物理过程之前所触发的事件。
+ * @event Director.EVENT_BEFORE_PHYSICS
+ * @readonly
+ */
+cc.Director.EVENT_BEFORE_PHYSICS = 'director_before_physics';
+
+/**
+ * The event which will be triggered after the physics process.<br/>
+ * 物理过程之后所触发的事件。
+ * @event Director.EVENT_AFTER_PHYSICS
+ * @readonly
+ */
+cc.Director.EVENT_AFTER_PHYSICS = 'director_after_physics';
 
 /**
  * @module cc

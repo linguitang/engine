@@ -1,6 +1,7 @@
 import Assembler from './assembler';
 import dynamicAtlasManager from './utils/dynamic-atlas/manager';
 import RenderData from './webgl/render-data';
+import { Color } from '../value-types';
 
 export default class Assembler2D extends Assembler {
     constructor () {
@@ -29,7 +30,7 @@ export default class Assembler2D extends Assembler {
     updateColor (comp, color) {
         let uintVerts = this._renderData.uintVDatas[0];
         if (!uintVerts) return;
-        color = color ||comp.node.color._val;
+        color = color != null ? color : comp.node.color._val;
         let floatsPerVert = this.floatsPerVert;
         let colorOffset = this.colorOffset;
         for (let i = colorOffset, l = uintVerts.length; i < l; i += floatsPerVert) {
@@ -53,21 +54,26 @@ export default class Assembler2D extends Assembler {
         let vl = local[0], vr = local[2],
             vb = local[1], vt = local[3];
         
+        let floatsPerVert = this.floatsPerVert;
+        let vertexOffset = 0;
         let justTranslate = a === 1 && b === 0 && c === 0 && d === 1;
 
         if (justTranslate) {
             // left bottom
-            verts[0] = vl + tx;
-            verts[1] = vb + ty;
+            verts[vertexOffset] = vl + tx;
+            verts[vertexOffset + 1] = vb + ty;
+            vertexOffset += floatsPerVert;
             // right bottom
-            verts[5] = vr + tx;
-            verts[6] = vb + ty;
+            verts[vertexOffset] = vr + tx;
+            verts[vertexOffset + 1] = vb + ty;
+            vertexOffset += floatsPerVert;
             // left top
-            verts[10] = vl + tx;
-            verts[11] = vt + ty;
+            verts[vertexOffset] = vl + tx;
+            verts[vertexOffset + 1] = vt + ty;
+            vertexOffset += floatsPerVert;
             // right top
-            verts[15] = vr + tx;
-            verts[16] = vt + ty;
+            verts[vertexOffset] = vr + tx;
+            verts[vertexOffset + 1] = vt + ty;
         } else {
             let al = a * vl, ar = a * vr,
             bl = b * vl, br = b * vr,
@@ -75,17 +81,20 @@ export default class Assembler2D extends Assembler {
             db = d * vb, dt = d * vt;
 
             // left bottom
-            verts[0] = al + cb + tx;
-            verts[1] = bl + db + ty;
+            verts[vertexOffset] = al + cb + tx;
+            verts[vertexOffset + 1] = bl + db + ty;
+            vertexOffset += floatsPerVert;
             // right bottom
-            verts[5] = ar + cb + tx;
-            verts[6] = br + db + ty;
+            verts[vertexOffset] = ar + cb + tx;
+            verts[vertexOffset + 1] = br + db + ty;
+            vertexOffset += floatsPerVert;
             // left top
-            verts[10] = al + ct + tx;
-            verts[11] = bl + dt + ty;
+            verts[vertexOffset] = al + ct + tx;
+            verts[vertexOffset + 1] = bl + dt + ty;
+            vertexOffset += floatsPerVert;
             // right top
-            verts[15] = ar + ct + tx;
-            verts[16] = br + dt + ty;
+            verts[vertexOffset] = ar + ct + tx;
+            verts[vertexOffset + 1] = br + dt + ty;
         }
     }
 
@@ -131,7 +140,7 @@ export default class Assembler2D extends Assembler {
                 frame._setDynamicAtlasFrame(packedFrame);
             }
         }
-        let material = comp.sharedMaterials[0];
+        let material = comp._materials[0];
         if (!material) return;
         
         if (material.getProperty('texture') !== frame._texture) {

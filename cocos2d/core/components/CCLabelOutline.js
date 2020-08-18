@@ -62,10 +62,12 @@ let LabelOutline = cc.Class({
         color: {
             tooltip: CC_DEV && 'i18n:COMPONENT.outline.color',
             get: function () {
-                return this._color;
+                return this._color.clone();
             },
             set: function (value) {
-                this._color = value;
+                if (!this._color.equals(value)) {
+                    this._color.set(value);
+                }
                 this._updateRenderData();
             }
         },
@@ -84,6 +86,8 @@ let LabelOutline = cc.Class({
                 return this._width;
             },
             set: function (value) {
+                if (this._width === value) return;
+
                 this._width = value;
                 this._updateRenderData();
             },
@@ -102,7 +106,7 @@ let LabelOutline = cc.Class({
     _updateRenderData () {
         let label = this.node.getComponent(cc.Label);
         if (label) {
-            label.markForRender(true);
+            label.setVertsDirty();
         }
     }
 

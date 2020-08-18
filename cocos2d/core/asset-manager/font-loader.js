@@ -24,7 +24,6 @@
  ****************************************************************************/
 
 const textUtils = require('../utils/text-utils');
-const callInNextTick = require('../platform/utils').callInNextTick;
 
 let _canvasContext = null;
 // letter symbol number CJK
@@ -81,8 +80,9 @@ function _checkFontLoaded () {
         }
 
         let oldWidth = fontLoadHandle.refWidth;
-        _canvasContext.font = '40px ' + fontFamily;
-        let newWidth = textUtils.safeMeasureText(_canvasContext, _testString);
+        let fontDesc = '40px ' + fontFamily;
+        _canvasContext.font = fontDesc;
+        let newWidth = textUtils.safeMeasureText(_canvasContext, _testString, fontDesc);
         // loaded successfully
         if (oldWidth !== newWidth) {
             _loadingFonts.splice(i, 1);
@@ -162,7 +162,7 @@ var fontLoader = {
         // Default width reference to test whether new font is loaded correctly
         let fontDesc = '40px ' + fontFamilyName;
         _canvasContext.font = fontDesc;
-        let refWidth = textUtils.safeMeasureText(_canvasContext, _testString);
+        let refWidth = textUtils.safeMeasureText(_canvasContext, _testString, fontDesc);
 
         // Setup font face style
         let fontStyle = document.createElement("style");

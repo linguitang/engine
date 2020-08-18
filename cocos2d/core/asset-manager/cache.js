@@ -22,6 +22,9 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
  ****************************************************************************/
+/**
+ * @module cc.AssetManager
+ */
 
 const js = require('../platform/js');
 /**
@@ -32,6 +35,7 @@ const js = require('../platform/js');
  * 用于缓存某些内容
  * 
  * @class Cache
+ * @typescript Cache<T = any>
  */
 function Cache (map) {
     if (map) {
@@ -46,6 +50,19 @@ function Cache (map) {
 
 Cache.prototype = {
     
+    /**
+     * !#en
+     * Create a cache
+     * 
+     * !#zh
+     * 创建一个 cache
+     * 
+     * @method constructor
+     * @param {Object} [map] - An object used to initialize   
+     * 
+     * @typescript
+     * constructor(map?: Record<string, T>)
+     */
     constructor: Cache,
 
     /**
@@ -57,18 +74,18 @@ Cache.prototype = {
      * 
      * @method add
      * @param {String} key - The key
-     * @param {Object} val - The value
-     * @returns {Object} The value
+     * @param {*} val - The value
+     * @returns {*} The value
      * 
      * @example
      * var cache = new Cache();
      * cache.add('test', null);
      * 
      * @typescript
-     * add(key: string, val: any): any
+     * add(key: string, val: T): T
      */
     add (key, val) {       
-        if (!this.has(key)) this._count++;
+        if (!(key in this._map)) this._count++;
         return this._map[key] = val;
     },
 
@@ -81,18 +98,17 @@ Cache.prototype = {
      * 
      * @method get
      * @param {string} key - The key
-     * @returns {Object} The corresponding content
+     * @returns {*} The corresponding content
      * 
      * @example
      * var cache = new Cache();
      * var test = cache.get('test');
      * 
      * @typescript
-     * get(key: string): any
+     * get(key: string): T
      */
     get (key) {
-        var entry = this._map[key];
-        return entry;
+        return this._map[key];
     },
 
     /**
@@ -126,14 +142,14 @@ Cache.prototype = {
      * 
      * @method remove
      * @param {string} key - The key
-     * @returns {Object} The removed content
+     * @returns {*} The removed content
      * 
      * @example
      * var cache = new Cache();
      * var content = cache.remove('test');
      * 
      * @typescript
-     * remove(key: string): any
+     * remove(key: string): T
      */
     remove (key) {
         var out = this._map[key];
@@ -176,7 +192,7 @@ Cache.prototype = {
      * 
      * @method forEach
      * @param {Function} func - Function to be invoked
-     * @param {Object} func.val - The value 
+     * @param {*} func.val - The value 
      * @param {String} func.key - The corresponding key
      * 
      * @example
@@ -184,7 +200,7 @@ Cache.prototype = {
      * cache.forEach((val, key) => console.log(key));
      * 
      * @typescript
-     * forEach(func: (val: any, key: string) => void): void
+     * forEach(func: (val: T, key: string) => void): void
      */
     forEach (func) {
         for (var key in this._map) {
@@ -208,7 +224,7 @@ Cache.prototype = {
      * var val = cache.find((val, key) => key === 'test');
      * 
      * @typescript
-     * find(predicate: (val: any, key: string) => boolean): any
+     * find(predicate: (val: T, key: string) => boolean): T
      */
     find (predicate) {
         for (var key in this._map) {
@@ -225,7 +241,7 @@ Cache.prototype = {
      * 缓存数量
      * 
      * @property count
-     * @returns {Number} The count of cached content
+     * @type {Number}
      */
     get count () {
         return this._count;

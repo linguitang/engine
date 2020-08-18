@@ -111,8 +111,8 @@ var TestDependency = cc.Class({
     extends: cc.Asset,
     properties: {
         dependency: {
-            default: '',
-            url: TestDependency,
+            default: null,
+            type: TestDependency,
         }
     }
 });
@@ -155,7 +155,11 @@ cc.engine = new (cc.Class({
 Editor.log = cc.log;
 Editor.warn = cc.warn;
 Editor.error = cc.error;
-Editor.Utils = Editor.Utils || {};
+Editor.Utils = Editor.Utils || {
+    UuidUtils: {
+        uuid: function () { return '' + Math.floor(Math.random() * 100000000) + Math.floor(Math.random() * 100000000); }
+    }
+};
 Editor.Utils.UuidCache = {};
 
 var assetDir = '../test/qunit/assets';
@@ -294,6 +298,8 @@ function createNodes (data) {
     createNode(data, 'root');
     return nodes;
 }
+
+var ImageBitmapOrImage = window.ImageBitmap || window.Image;
 
 // output test states
 

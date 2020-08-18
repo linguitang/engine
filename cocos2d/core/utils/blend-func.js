@@ -30,7 +30,8 @@ let BlendFunc = cc.Class({
             set (value) {
                 if (this._srcBlendFactor === value) return;
                 this._srcBlendFactor = value;
-                this._updateBlendFunc();
+                this._updateBlendFunc(true);
+                this._onBlendChanged && this._onBlendChanged();
             },
             animatable: false,
             type: BlendFactor,
@@ -53,7 +54,7 @@ let BlendFunc = cc.Class({
             set (value) {
                 if (this._dstBlendFactor === value) return;
                 this._dstBlendFactor = value;
-                this._updateBlendFunc();
+                this._updateBlendFunc(true);
             },
             animatable: false,
             type: BlendFactor,
@@ -63,16 +64,27 @@ let BlendFunc = cc.Class({
     },
 
     setMaterial (index, material) {
-        if (this._materials[index] === material) return;
-        
-        RenderComponent.prototype.setMaterial.call(this, index, material);
-        if (material) {
-            this._updateMaterialBlendFunc(material);
+        let materialVar = RenderComponent.prototype.setMaterial.call(this, index, material);
+
+        if (this._srcBlendFactor !== BlendFactor.SRC_ALPHA || this._dstBlendFactor !== BlendFactor.ONE_MINUS_SRC_ALPHA) {
+            this._updateMaterialBlendFunc(materialVar);
         }
+
+        return materialVar;
     },
 
-    _updateBlendFunc () {
-        let materials = this._materials;
+    _updateMaterial () {
+        this._updateBlendFunc();
+    },
+
+    _updateBlendFunc (force) {
+        if (!force) {
+            if (this._srcBlendFactor === BlendFactor.SRC_ALPHA && this._dstBlendFactor === BlendFactor.ONE_MINUS_SRC_ALPHA) {
+                return;
+            }
+        }
+        
+        let materials = this.getMaterials();
         for (let i = 0; i < materials.length; i++) {
             let material = materials[i];
             this._updateMaterialBlendFunc(material);
@@ -80,15 +92,13 @@ let BlendFunc = cc.Class({
     },
 
     _updateMaterialBlendFunc (material) {
-        material.effect.setBlend(
+        material.setBlend(
             true,
             gfx.BLEND_FUNC_ADD,
             this._srcBlendFactor, this._dstBlendFactor,
             gfx.BLEND_FUNC_ADD,
             this._srcBlendFactor, this._dstBlendFactor
         );
-
-        material.setDirty(true);
     },
 });
 

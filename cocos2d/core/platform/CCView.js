@@ -57,9 +57,9 @@ if (cc.sys.os === cc.sys.OS_IOS) // All browsers are WebView
 
 switch (__BrowserGetter.adaptationType) {
     case cc.sys.BROWSER_TYPE_SAFARI:
-        __BrowserGetter.meta["minimal-ui"] = "true";
     case cc.sys.BROWSER_TYPE_SOUGOU:
     case cc.sys.BROWSER_TYPE_UC:
+        __BrowserGetter.meta["minimal-ui"] = "true";
         __BrowserGetter.availWidth = function(frame){
             return frame.clientWidth;
         };
@@ -109,7 +109,11 @@ var View = function () {
     _t._autoFullScreen = false;
     // The device's pixel ratio (for retina displays)
     _t._devicePixelRatio = 1;
-    _t._maxPixelRatio = 2;
+    if(CC_JSB) {
+        _t._maxPixelRatio = 4;
+    } else {
+        _t._maxPixelRatio = 2;
+    }
     // Retina disabled by default
     _t._retinaEnabled = false;
     // Custom callback for resize event
@@ -138,7 +142,6 @@ cc.js.extend(View, EventTarget);
 cc.js.mixin(View.prototype, {
     init () {
         this._initFrameSize();
-        this.enableAntiAlias(true);
 
         var w = cc.game.canvas.width, h = cc.game.canvas.height;
         this._designResolutionSize.width = w;
@@ -162,6 +165,15 @@ cc.js.mixin(View.prototype, {
             view = this;
         } else {
             view = cc.view;
+        }
+        // HACK: some browsers can't update window size immediately
+        // need to handle resize event callback on the next tick
+        let sys = cc.sys;
+        if (sys.browserType === sys.BROWSER_TYPE_UC && sys.os === sys.OS_IOS) {
+            setTimeout(function () {
+                view._resizeEvent(forceOrEvent);
+            }, 0)
+            return;
         }
 
         // Check frame size changed or not
@@ -198,6 +210,21 @@ cc.js.mixin(View.prototype, {
     _orientationChange: function () {
         cc.view._orientationChanging = true;
         cc.view._resizeEvent();
+        // HACK: show nav bar on iOS safari
+        // safari will enter fullscreen when rotate to landscape
+        // need to exit fullscreen when rotate back to portrait, scrollTo(0, 1) works.
+        if (cc.sys.browserType === cc.sys.BROWSER_TYPE_SAFARI && cc.sys.isMobile) {
+            setTimeout(() => {
+                if (window.innerHeight > window.innerWidth) {
+                    window.scrollTo(0, 1);
+                }
+            }, 500);
+        }
+    },
+
+    _resize: function() {
+        //force resize when size is changed at native
+        cc.view._resizeEvent(CC_JSB);
     },
 
     /**
@@ -238,14 +265,14 @@ cc.js.mixin(View.prototype, {
             //enable
             if (!this._resizeWithBrowserSize) {
                 this._resizeWithBrowserSize = true;
-                window.addEventListener('resize', this._resizeEvent);
+                window.addEventListener('resize', this._resize);
                 window.addEventListener('orientationchange', this._orientationChange);
             }
         } else {
             //disable
             if (this._resizeWithBrowserSize) {
                 this._resizeWithBrowserSize = false;
-                window.removeEventListener('resize', this._resizeEvent);
+                window.removeEventListener('resize', this._resize);
                 window.removeEventListener('orientationchange', this._orientationChange);
             }
         }
@@ -398,6 +425,10 @@ cc.js.mixin(View.prototype, {
      * @param {Boolean} enabled - Enable or disable retina display
      */
     enableRetina: function(enabled) {
+        if (CC_EDITOR && enabled) {
+            cc.warn('Can not enable retina in Editor.');
+            return;
+        }
         this._retinaEnabled = !!enabled;
     },
 
@@ -411,6 +442,9 @@ cc.js.mixin(View.prototype, {
      * @return {Boolean}
      */
     isRetinaEnabled: function() {
+        if (CC_EDITOR) {
+            return false;
+        }
         return this._retinaEnabled;
     },
 
@@ -419,16 +453,19 @@ cc.js.mixin(View.prototype, {
      * !#zh 控制抗锯齿是否开启
      * @method enableAntiAlias
      * @param {Boolean} enabled - Enable or not anti-alias
+     * @deprecated cc.view.enableAntiAlias is deprecated, please use cc.Texture2D.setFilters instead
+     * @since v2.3.0
      */
     enableAntiAlias: function (enabled) {
+        cc.warnID(9200);
         if (this._antiAliasEnabled === enabled) {
             return;
         }
         this._antiAliasEnabled = enabled;
         if(cc.game.renderType === cc.game.RENDER_TYPE_WEBGL) {
-            var cache = cc.assetManager._assets;
+            var cache = cc.assetManager.assets;
             cache.forEach(function (asset) {
-                if (asset instanceof cc.Texture2Dx) {
+                if (asset instanceof cc.Texture2D) {
                     var Filter = cc.Texture2D.Filter;
                     if (enabled) {
                         asset.setFilters(Filter.LINEAR, Filter.LINEAR);
@@ -669,8 +706,8 @@ cc.js.mixin(View.prototype, {
      */
     setDesignResolutionSize: function (width, height, resolutionPolicy) {
         // Defensive code
-        if( !(width > 0 || height > 0) ){
-            cc.logID(2200);
+        if( !(width > 0 && height > 0) ){
+            cc.errorID(2200);
             return;
         }
 
@@ -728,7 +765,7 @@ cc.js.mixin(View.prototype, {
         cc.visibleRect && cc.visibleRect.init(this._visibleRect);
 
         renderer.updateCameraViewport();
-        _cc.inputManager._updateCanvasBoundingRect();
+        cc.internal.inputManager._updateCanvasBoundingRect();
         this.emit('design-resolution-changed');
     },
 
@@ -965,16 +1002,16 @@ cc.js.mixin(View.prototype, {
 });
 
 /**
- * !en
+ * !#en
  * Emit when design resolution changed.
- * !zh
+ * !#zh
  * 当设计分辨率改变时发送。
  * @event design-resolution-changed
  */
  /**
- * !en
+ * !#en
  * Emit when canvas resize.
- * !zh
+ * !#zh
  * 当画布大小改变时发送。
  * @event canvas-resize
  */
@@ -1027,8 +1064,12 @@ cc.ContainerStrategy = cc.Class({
         
         // Setup pixel ratio for retina display
         var devicePixelRatio = view._devicePixelRatio = 1;
-        if (view.isRetinaEnabled())
+        if(CC_JSB){
+            // view.isRetinaEnabled only work on web. 
+            devicePixelRatio = view._devicePixelRatio = window.devicePixelRatio;
+        }else if (view.isRetinaEnabled()) {
             devicePixelRatio = view._devicePixelRatio = Math.min(view._maxPixelRatio, window.devicePixelRatio || 1);
+        }
         // Setup canvas
         locCanvas.width = w * devicePixelRatio;
         locCanvas.height = h * devicePixelRatio;

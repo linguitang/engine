@@ -45,8 +45,8 @@ function _copyprop(name, source, target) {
 }
 
 /**
- * This module provides some JavaScript utilities.
- * All members can be accessed with "cc.js".
+ * !#en This module provides some JavaScript utilities. All members can be accessed with `cc.js`.
+ * !#zh 这个模块封装了 JavaScript 相关的一些实用函数，你可以通过 `cc.js` 来访问这个模块。
  * @submodule js
  * @module js
  */
@@ -225,6 +225,7 @@ var js = {
      * Checks whether obj is an empty object
      * @method isEmptyObject
      * @param {any} obj 
+     * @returns {Boolean}
      */
     isEmptyObject: function (obj) {
         for (var key in obj) {
@@ -566,7 +567,7 @@ cc.js.unregisterClass to remove the id of unused class';
 })();
 
 /**
- * Defines a polyfill field for obsoleted codes.
+ * Defines a polyfill field for deprecated codes.
  * @method obsolete
  * @param {any} obj - YourObject or YourClass.prototype
  * @param {String} obsoleted - "OldParam" or "YourClass.OldParam"
@@ -579,7 +580,7 @@ js.obsolete = function (obj, obsoleted, newExpr, writable) {
     var newProp = extractPropName.exec(newExpr)[0];
     function get () {
         if (CC_DEV) {
-            cc.warnID(5400, obsoleted, newExpr);
+            cc.warnID(1400, obsoleted, newExpr);
         }
         return this[newProp];
     }
@@ -588,7 +589,7 @@ js.obsolete = function (obj, obsoleted, newExpr, writable) {
             get,
             function (value) {
                 if (CC_DEV) {
-                    cc.warnID(5401, obsoleted, newExpr);
+                    cc.warnID(1400, obsoleted, newExpr);
                 }
                 this[newProp] = value;
             }
@@ -642,8 +643,10 @@ js.formatStr = function () {
         for (let i = 1; i < argLen; ++i) {
             var arg = arguments[i];
             var regExpToTest = typeof arg === 'number' ? REGEXP_NUM_OR_STR : REGEXP_STR;
-            if (regExpToTest.test(msg))
-                msg = msg.replace(regExpToTest, arg);
+            if (regExpToTest.test(msg)) {
+                const notReplaceFunction = '' + arg;
+                msg = msg.replace(regExpToTest, notReplaceFunction);
+            }
             else
                 msg += ' ' + arg;
         }
@@ -798,18 +801,6 @@ function appendObjectsAt (array, addObjs, index) {
 }
 
 /**
- * Exact same function as Array.prototype.indexOf.<br>
- * HACK: ugliy hack for Baidu mobile browser compatibility, stupid Baidu guys modify Array.prototype.indexOf for all pages loaded, their version changes strict comparison to non-strict comparison, it also ignores the second parameter of the original API, and this will cause event handler enter infinite loop.<br>
- * Baidu developers, if you ever see this documentation, here is the standard: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/indexOf, Seriously!
- *
- * @method indexOf
- * @param {any} searchElement - Element to locate in the array.
- * @param {Number} [fromIndex=0] - The index to start the search at
- * @return {Number} - the first index at which a given element can be found in the array, or -1 if it is not present.
- */
-var indexOf = Array.prototype.indexOf;
-
-/**
  * Determines whether the array contains a specific value.
  * @method contains
  * @param {any[]} array
@@ -843,7 +834,6 @@ js.array = {
     removeArray,
     appendObjectsAt,
     copy,
-    indexOf,
     MutableForwardIterator: require('../utils/mutable-forward-iterator')
 };
 

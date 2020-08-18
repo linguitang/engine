@@ -23,13 +23,10 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-const AffineTrans = require('../core/utils/affine-transform');
 const js = require('../core/platform/js');
 const misc = require('../core/utils/misc');
 
 const ZERO_VEC2 = cc.v2(0, 0);
-
-let _trans = AffineTrans.create();
 let _pos = cc.v2();
 let _tpa = cc.v2();
 let _tpb = cc.v2();
@@ -46,6 +43,7 @@ let Particle = function () {
     this.deltaRotation = 0;
     this.timeToLive = 0;
     this.drawPos = cc.v2(0, 0);
+    this.aspectRatio = 1;
     // Mode A
     this.dir = cc.v2(0, 0);
     this.radialAccel = 0;
@@ -69,6 +67,7 @@ let pool = new js.Pool(function (par) {
     par.deltaRotation = 0;
     par.timeToLive = 0;
     par.drawPos.set(ZERO_VEC2);
+    par.aspectRatio = 1;
     // Mode A
     par.dir.set(ZERO_VEC2);
     par.radialAccel = 0;
@@ -92,6 +91,7 @@ let Simulator = function (system) {
     this.elapsed = 0;
     this.emitCounter = 0;
     this._uvFilled = 0;
+    this._worldRotation = 0;
 }
 
 Simulator.prototype.stop = function () {
@@ -164,10 +164,11 @@ Simulator.prototype.emitParticle = function (pos) {
     particle.startPos.x = pos.x;
     particle.startPos.y = pos.y;
 
+    // aspect ratio
+    particle.aspectRatio = psys._aspectRatio || 1;
+
     // direction
-    let worldRotation = getWorldRotation(psys.node);
-    let relAngle = psys.positionType === cc.ParticleSystem.PositionType.FREE ? psys.angle + worldRotation : psys.angle;
-    let a = misc.degreesToRadians(relAngle + psys.angleVar * (Math.random() - 0.5) * 2);
+    let a = misc.degreesToRadians( psys.angle + this._worldRotation + psys.angleVar * (Math.random() - 0.5) * 2);
     // Mode Gravity: A
     if (psys.emitterMode === cc.ParticleSystem.EmitterMode.GRAVITY) {
         let s = psys.speed + psys.speedVar * (Math.random() - 0.5) * 2;
@@ -195,6 +196,7 @@ Simulator.prototype.emitParticle = function (pos) {
         particle.degreesPerSecond = misc.degreesToRadians(psys.rotatePerS + psys.rotatePerSVar * (Math.random() - 0.5) * 2);
     }
 };
+
 // In the Free mode to get emit real rotation in the world coordinate.
 function getWorldRotation (node) {
     let rotation = 0;
@@ -239,11 +241,16 @@ Simulator.prototype.updateParticleBuffer = function (particle, pos, buffer, offs
     let uintbuf = buffer._uintVData;
 
     let x = pos.x, y = pos.y;
-    let size_2 = particle.size / 2;
+    let width = particle.size;
+    let height = width;
+    let aspectRatio = particle.aspectRatio;
+    aspectRatio > 1 ? (height = width / aspectRatio) : (width = height * aspectRatio);
+    let halfWidth = width / 2;
+    let halfHeight = height / 2;
     // pos
     if (particle.rotation) {
-        let x1 = -size_2, y1 = -size_2;
-        let x2 = size_2, y2 = size_2;
+        let x1 = -halfWidth, y1 = -halfHeight;
+        let x2 = halfWidth, y2 = halfHeight;
         let rad = -misc.degreesToRadians(particle.rotation);
         let cr = Math.cos(rad), sr = Math.sin(rad);
         // bl
@@ -261,17 +268,17 @@ Simulator.prototype.updateParticleBuffer = function (particle, pos, buffer, offs
     }
     else {
         // bl
-        vbuf[offset] = x - size_2;
-        vbuf[offset+1] = y - size_2;
+        vbuf[offset] = x - halfWidth;
+        vbuf[offset+1] = y - halfHeight;
         // br
-        vbuf[offset+5] = x + size_2;
-        vbuf[offset+6] = y - size_2;
+        vbuf[offset+5] = x + halfWidth;
+        vbuf[offset+6] = y - halfHeight;
         // tl
-        vbuf[offset+10] = x - size_2;
-        vbuf[offset+11] = y + size_2;
+        vbuf[offset+10] = x - halfWidth;
+        vbuf[offset+11] = y + halfHeight;
         // tr
-        vbuf[offset+15] = x + size_2;
-        vbuf[offset+16] = y + size_2;
+        vbuf[offset+15] = x + halfWidth;
+        vbuf[offset+16] = y + halfHeight;
     }
     // color
     uintbuf[offset+4] = particle.color._val;
@@ -286,27 +293,22 @@ Simulator.prototype.step = function (dt) {
     let node = psys.node;
     let particles = this.particles;
     const FLOAT_PER_PARTICLE = 4 * this.sys._assembler._vfmt._bytes / 4;
+    const PositionType = cc.ParticleSystem.PositionType;
 
     // Calculate pos
     node._updateWorldMatrix();
-    _trans = AffineTrans.identity();
-    if (psys.positionType === cc.ParticleSystem.PositionType.FREE) {
+    if (psys.positionType === PositionType.FREE) {
+        this._worldRotation = getWorldRotation(node);
         let m =  node._worldMatrix.m;
-        _trans.tx = m[12];
-        _trans.ty = m[13];
-        AffineTrans.transformVec2(_pos, ZERO_VEC2, _trans);
-    } else if (psys.positionType === cc.ParticleSystem.PositionType.RELATIVE) {
-        let angle = misc.degreesToRadians(-node.angle);
-        let cos = Math.cos(angle);
-        let sin = Math.sin(angle);
-        _trans = AffineTrans.create(cos, -sin, sin, cos, 0, 0);
+        _pos.x = m[12];
+        _pos.y = m[13];
+    } else if (psys.positionType === PositionType.RELATIVE) {
+        this._worldRotation = node.angle;
         _pos.x = node.x;
         _pos.y = node.y;
+    } else {
+        this._worldRotation = 0;
     }
-
-    // Get world to node trans only once
-    AffineTrans.invert(_trans, _trans);
-    let worldToNodeTrans = _trans;
 
     // Emission
     if (this.active && psys.emissionRate) {
@@ -404,24 +406,9 @@ Simulator.prototype.step = function (dt) {
 
             // update values in quad buffer
             let newPos = _tpa;
-            let diff = _tpb;
-            if (psys.positionType === cc.ParticleSystem.PositionType.FREE) {
-                diff.set(particle.startPos);
-                diff.negSelf();  // Unify direction with other positionType
-                newPos.set(particle.pos);
-                newPos.subSelf(diff);
-            }
-            else if (psys.positionType === cc.ParticleSystem.PositionType.RELATIVE) {
-                let startPos = _tpc;
-                // current Position convert To Node Space
-                AffineTrans.transformVec2(diff, _pos, worldToNodeTrans);
-                // start Position convert To Node Space
-                AffineTrans.transformVec2(startPos, particle.startPos, worldToNodeTrans);
-                diff.subSelf(startPos);
-                newPos.set(particle.pos);
-                newPos.subSelf(diff);
-            } else {
-                newPos.set(particle.pos);
+            newPos.set(particle.pos);
+            if (psys.positionType !== PositionType.GROUPED) {
+                newPos.addSelf(particle.startPos);
             }
 
             let offset = FLOAT_PER_PARTICLE * particleIdx;
@@ -440,9 +427,9 @@ Simulator.prototype.step = function (dt) {
         }
     }
 
+    psys._assembler._ia._count = particles.length * 6;
     if (particles.length > 0) {
         buffer.uploadData();
-        psys._assembler._ia._count = particles.length * 6;
     }
     else if (!this.active && !this.readyToPlay) {
         this.finished = true;

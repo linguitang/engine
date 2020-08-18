@@ -91,22 +91,27 @@ let className2InspectorName = {
     Boolean: 'boolean'
 };
 export function getInspectorProps (prop) {
-    let inspector = {
+    let editor = {
         type: prop.type
     };
 
-    Object.assign(inspector, prop.inspector);
+    Object.assign(editor, prop.editor || prop.inspector);
     
-    inspector.defines = prop.defines;
-    inspector.value = getInstanceCtor(inspector.type)(prop.value);
-
-    let className = getClassName(inspector.type);
-    inspector.typeName = className2InspectorName[className] || className;
-
-    if (inspector.typeName == 'cc.Texture2D') {
-        inspector.typeName = 'cc.Asset';
-        inspector.assetType = 'cc.Texture2D';
+    editor.defines = prop.defines;
+    editor.value = getInstanceCtor(editor.type)(prop.value);
+    if (prop.range) {
+        editor.range = prop.range;
     }
 
-    return inspector;
+    let className = getClassName(editor.type);
+    editor.typeName = className2InspectorName[className] || className;
+    
+    editor.valueCtor = enums2ctor[editor.type];
+
+    if (editor.typeName == 'cc.Texture2D') {
+        editor.typeName = 'cc.Asset';
+        editor.assetType = 'cc.Texture2D';
+    }
+
+    return editor;
 };

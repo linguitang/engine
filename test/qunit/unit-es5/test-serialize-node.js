@@ -21,7 +21,6 @@ if (TestEditorExtends) {
 
     var compareKeys = [
         '_localZOrder',
-        '_globalZOrder',
         '_scale',
         '_position',
         '_skewX',
@@ -42,7 +41,6 @@ if (TestEditorExtends) {
         }
         return {
             '_localZOrder' : getRandomInt(),
-            '_globalZOrder' : getRandomInt(),
             '_trs' : trs,
             '_skewX' : getRandomDouble(),
             '_skewY' : getRandomDouble(),
@@ -60,7 +58,6 @@ if (TestEditorExtends) {
         var ret = new cc.Node();
 
         ret._localZOrder = getRandomInt();
-        ret._globalZOrder = getRandomInt();
         ret.quat = cc.quat(getRandomDouble(), getRandomDouble(), getRandomDouble(), 1);
         ret.scale = cc.v3(getRandomDouble(), getRandomDouble(), getRandomDouble())
         ret.position = cc.v3(getRandomDouble(), getRandomDouble(), getRandomDouble());
@@ -90,11 +87,11 @@ if (TestEditorExtends) {
             equal(node1.key, node2.key, '"' + key + '" should be equal between two nodes.');
         }
 
-        equal(node1.getChildrenCount(), node2.getChildrenCount(), 'The children count should be equal between two nodes.');
-        if (node1.getChildrenCount() > 0) {
-            var children = node1.getChildren();
+        equal(node1.childrenCount, node2.childrenCount, 'The children count should be equal between two nodes.');
+        if (node1.childrenCount > 0) {
+            var children = node1._children;
             for (var j = 0; j < children.length; ++j) {
-                compare2Nodes(children[j], node2.getChildren()[j], 'The children content should be equal between two nodes.');
+                compare2Nodes(children[j], node2._children[j], 'The children content should be equal between two nodes.');
             }
         }
     }

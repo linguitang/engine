@@ -37,13 +37,13 @@ function parse (task) {
         var out = RequestItem.create();
         if (typeof item === 'string') {
             item = Object.create(null);
-            item[options.requestType || RequestType.UUID] = input[i];
+            item[options.__requestType__ || RequestType.UUID] = input[i];
         }
         if (typeof item === 'object') {
             // local options will overlap glabal options
-            for (var op in options) {
-                if (op in item) continue;
-                item[op] = options[op];
+            cc.js.addon(item, options);
+            if (item.preset) {
+                cc.js.addon(item, cc.assetManager.presets[item.preset]);
             }
             for (var key in item) {
                 switch (key) {
@@ -62,9 +62,10 @@ function parse (task) {
                         }
                         out.ext = item.ext || '.json';
                         break;
-                    case 'requestType':
+                    case '__requestType__':
                     case 'ext': 
                     case 'bundle':
+                    case 'preset':
                     case 'type': break;
                     case RequestType.DIR: 
                         if (bundles.has(item.bundle)) {
@@ -72,7 +73,7 @@ function parse (task) {
                             bundles.get(item.bundle)._config.getDirWithPath(item.dir, item.type, infos);
                             for (let i = 0, l = infos.length; i < l; i++) {
                                 var info = infos[i];
-                                input.push({uuid: info.uuid, isNative: false, ext: '.json', bundle: item.bundle});
+                                input.push({uuid: info.uuid, __isNative__: false, ext: '.json', bundle: item.bundle});
                             }
                         }
                         out.recycle();
@@ -88,42 +89,44 @@ function parse (task) {
                                 config = bundles.get(info.redirect)._config;
                                 info = config.getAssetInfo(info.uuid);
                             }
-                            out.config = config; 
-                            out.uuid = info.uuid;
-                            out.info = info;
-                        }
-                        out.ext = item.ext || '.json';
-                        if (!info) {
-                            out.recycle();
-                            throw new Error(`this bundle ${item.bundle} does not contain ${item.path}`);
-                        }
-                        break;
-                    case RequestType.SCENE:
-                        if (bundles.has(item.bundle)) {
-                            var config = bundles.get(item.bundle)._config;
-                            var info = config.getSceneInfo(item.scene);
-                            if (info && info.redirect) {
-                                if (!bundles.has(info.redirect)) throw new Error(`you need to load bundle ${info.redirect} first`);
-                                config = bundles.get(info.redirect)._config;
-                                info = config.getAssetInfo(info.uuid);
+
+                            if (!info) {
+                                out.recycle();
+                                throw new Error(`Bundle ${item.bundle} doesn't contain ${item.path}`);
                             }
                             out.config = config; 
                             out.uuid = info.uuid;
                             out.info = info;
                         }
-                        if (!info) {
-                            out.recycle();
-                            throw new Error(`this bundle ${item.bundle} does not contain scene ${item.scene}`);
+                        out.ext = item.ext || '.json';
+                        break;
+                    case RequestType.SCENE:
+                        if (bundles.has(item.bundle)) {
+                            var config = bundles.get(item.bundle)._config;
+                            var info = config.getSceneInfo(item.scene);
+                            
+                            if (info && info.redirect) {
+                                if (!bundles.has(info.redirect)) throw new Error(`you need to load bundle ${info.redirect} first`);
+                                config = bundles.get(info.redirect)._config;
+                                info = config.getAssetInfo(info.uuid);
+                            }
+                            if (!info) {
+                                out.recycle();
+                                throw new Error(`Bundle ${config.name} doesn't contain scene ${item.scene}`);
+                            }
+                            out.config = config; 
+                            out.uuid = info.uuid;
+                            out.info = info;
                         }
                         break;
-                    case 'isNative': 
-                        out[key] = item[key];
+                    case '__isNative__': 
+                        out.isNative = item.__isNative__;
                         break;
                     case RequestType.URL: 
                         out.url = item.url;
                         out.uuid = item.uuid || item.url;
                         out.ext = item.ext || cc.path.extname(item.url);
-                        out.isNative = item.isNative !== undefined ? item.isNative : true;
+                        out.isNative = item.__isNative__ !== undefined ? item.__isNative__ : true;
                         break;
                     default: out.options[key] = item[key];
                 }
@@ -144,12 +147,12 @@ function combine (task) {
         if (item.url) continue;
 
         var url = '', base = '';
-    
+        var config = item.config;
         if (item.isNative) {
-            base = item.config ? (item.config.base + item.config.nativeBase) : cc.assetManager.generalNativeBase;
+            base = (config && config.nativeBase) ? (config.base + config.nativeBase) : cc.assetManager.generalNativeBase;
         } 
         else {
-            base = item.config ? (item.config.base + item.config.importBase) : cc.assetManager.generalImportBase;
+            base = (config && config.importBase) ? (config.base + config.importBase) : cc.assetManager.generalImportBase;
         }
 
         let uuid = item.uuid;
@@ -164,9 +167,9 @@ function combine (task) {
             }
         }
 
-        // ugly hack
+        // ugly hack, WeChat does not support loading font likes 'myfont.dw213.ttf'. So append hash to directory
         if (item.ext === '.ttf') {
-            url = `${base}/${uuid.slice(0, 2)}/${uuid}${ver}/${item.options.name}`;
+            url = `${base}/${uuid.slice(0, 2)}/${uuid}${ver}/${item.options.__nativeName__}`;
         }
         else {
             url = `${base}/${uuid.slice(0, 2)}/${uuid}${ver}${item.ext}`;

@@ -48,7 +48,7 @@ let Graphics = cc.Class({
     },
 
     properties: {
-        _lineWidth: 1,
+        _lineWidth: 2,
         _strokeColor: cc.Color.BLACK,
         _lineJoin: LineJoin.MITER,
         _lineCap: LineCap.BUTT,
@@ -181,24 +181,19 @@ let Graphics = cc.Class({
         this._impl = null;
     },
 
-    _activateMaterial () {
-        // Ignore material in canvas
-        if (cc.game.renderType === cc.game.RENDER_TYPE_CANVAS) {
-            this.disableRender();
-            return;
+    _getDefaultMaterial () {
+        return Material.getBuiltinMaterial('2d-graphics');
+    },
+
+    _updateMaterial () {
+        let material = this._materials[0];
+        if (!material) return;
+        if (material.getDefine('CC_USE_MODEL') !== undefined) {
+            material.define('CC_USE_MODEL', true);
         }
-        
-        let material = this.sharedMaterials[0];
-        if (!material) {
-            material = Material.getInstantiatedBuiltinMaterial('2d-base', this);
+        if (material.getDefine('CC_SUPPORT_standard_derivatives') !== undefined && cc.sys.glExtension('OES_standard_derivatives')) {
+            material.define('CC_SUPPORT_standard_derivatives', true);
         }
-        else {
-            material = Material.getInstantiatedMaterial(material, this);
-        }
-        
-        material.define('CC_USE_MODEL', true);
-        this.setMaterial(0, material);
-        this.markForRender(true);
     },
 
     /**

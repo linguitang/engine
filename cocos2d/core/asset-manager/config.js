@@ -27,34 +27,22 @@ const Cache = require('./cache');
 const { normalize } = require('./helper');
 const { processOptions } = require('./utilities');
 
-/**
- * !#en
- * Control asset's information
- * 
- * !#zh
- * 管理资源的配置信息
- * 
- * @class Config
- */
 function Config () {
 
     this.name = '';
 
-    this.base = ''
-    // The base dir for import-assets in runtime, such like 'res/import'
+    this.base = '';
+
     this.importBase = '';
-    // The base dir for native-assets in runtime, such like 'res/native'
+
     this.nativeBase = '';
 
-    // bundle dependencies
     this.deps = null;
 
-    // Caches all info of asset. uuid as key, info as value
     this.assetInfos = new Cache();
 
     this.scenes = new Cache();
 
-    // Caches all informations of import-asset within folder
     this.paths = new Cache();
 }
 
@@ -62,19 +50,6 @@ Config.prototype = {
 
     constructor: Config,
 
-    /**
-     * !#en
-     * Initialize
-     * 
-     * !#zh
-     * 初始化 
-     * 
-     * @method init
-     * @param {Object} options - configuration information
-     * 
-     * @typescript
-     * init(options?: any): void
-     */
     init: function (options) {
         processOptions(options);
 
@@ -199,24 +174,6 @@ Config.prototype = {
         }
     },
 
-    /**
-     * !#en
-     * Get asset's info using path, only valid when asset is in 'paths' directory.
-     *  
-     * !#zh
-     * 使用 path 获取资源的配置信息
-     * 
-     * @method getInfoWithPath
-     * @param {string} path - The relative path of asset, such as 'images/a'
-     * @param {Function} [type] - The constructor of asset, such as  cc.Texture2D
-     * @returns {Object} The asset info 
-     * 
-     * @example
-     * var info = config.getInfoWithPath('image/a', cc.Texture2D);
-     * 
-     * @typescript
-     * getInfoWithPath (path: string, type?: typeof cc.Asset): any
-     */
     getInfoWithPath: function (path, type) {
 
         if (!path) {
@@ -240,26 +197,6 @@ Config.prototype = {
         return null;
     },
 
-    /**
-     * !#en
-     * Get all asset's info within specific folder
-     * 
-     * !#zh
-     * 获取在某个指定文件夹下的所有资源信息
-     * 
-     * @method getDirWithPath
-     * @param {string} path - The relative path of folder, such as 'images'
-     * @param {Function} [type] - The constructor should be used to filter paths
-     * @param {Array} [out] - The output array
-     * @returns {Object[]} Infos
-     * 
-     * @example 
-     * var infos = [];
-     * config.getDirWithPath('images', cc.Texture2D, infos);
-     * 
-     * @typescript
-     * getDirWithPath (path: string, type?: typeof cc.Asset, out?: []any): []any
-     */
     getDirWithPath: function (path, type, out) {
         path = normalize(path);
         if (path[path.length - 1] === '/') {
@@ -288,41 +225,10 @@ Config.prototype = {
         return infos;
     },
 
-    /**
-     * !#en
-     * Get asset's info with uuid
-     * 
-     * !#zh
-     * 通过 uuid 获取资源信息
-     * 
-     * @method getAssetInfo
-     * @param {string} uuid - The asset's uuid
-     * @returns {Object} info 
-     * 
-     * @example
-     * var info = config.getAssetInfo('fcmR3XADNLgJ1ByKhqcC5Z');
-     * 
-     * @typescript
-     * getAssetInfo (uuid: string): any
-     */
     getAssetInfo: function (uuid) {
         return this.assetInfos.get(uuid);
     },
 
-    /**
-     * !#en
-     * Get scene'info with name
-     * 
-     * !#zh
-     * 通过场景名获取场景信息
-     * 
-     * @method getSceneInfo
-     * @param {string} name - The name of scene
-     * @return {Object} info
-     * 
-     * @example
-     * var info = config.getSceneInfo('first.fire');
-     */
     getSceneInfo: function (name) {
         if (!name.endsWith('.fire')) {
             name += '.fire';
@@ -337,22 +243,15 @@ Config.prototype = {
         return info;
     },
 
-    /**
-     * !#en
-     * destroy this configuration 
-     * 
-     * !#zh
-     * 销毁这个配置
-     * 
-     * @method destroy
-     * 
-     * @typescript
-     * destroy(): void
-     */
     destroy: function () {
         this.paths.destroy();
         this.scenes.destroy();
         this.assetInfos.destroy();
     }
 };
+
+if (CC_TEST) {
+    cc._Test.Config = Config;
+}
+
 module.exports = Config;

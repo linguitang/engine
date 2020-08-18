@@ -5,8 +5,6 @@ let _atlasIndex = -1;
 
 let _maxAtlasCount = 5;
 let _textureSize = 2048;
-// Smaller frame is more likely to be affected by linear filter
-let _minFrameSize = 8;
 let _maxFrameSize = 512;
 let _textureBleeding = true;
 
@@ -28,16 +26,16 @@ function beforeSceneLoad () {
 let _enabled = false;
 
 /**
- * !#en Manager the dynamic atlas.
- * !#zh 管理动态图集。
+ * !#en Manage Dynamic Atlas Manager. Dynamic Atlas Manager is used for merging textures at runtime, see [Dynamic Atlas](https://docs.cocos.com/creator/manual/en/advanced-topics/dynamic-atlas.html) for details.
+ * !#zh 管理动态图集。动态图集用于在运行时对贴图进行合并，详见 [动态合图](https://docs.cocos.com/creator/manual/zh/advanced-topics/dynamic-atlas.html)。
  * @class DynamicAtlasManager
  */
 let dynamicAtlasManager = {
     Atlas: Atlas,
     
     /**
-     * !#en Enabled or Disabled dynamic atlas.
-     * !#zh 开启或者关闭动态图集。
+     * !#en Enable or disable the dynamic atlas, see [Dynamic Atlas](https://docs.cocos.com/creator/manual/en/advanced-topics/dynamic-atlas.html) for details.
+     * !#zh 开启或者关闭动态图集，详见 [动态合图](https://docs.cocos.com/creator/manual/zh/advanced-topics/dynamic-atlas.html)。
      * @property enabled
      * @type {Boolean}
      */
@@ -116,13 +114,8 @@ let dynamicAtlasManager = {
      * !#zh 可以添加进图集的图片的最小尺寸。
      * @property minFrameSize
      * @type {Number}
+     * @deprecated
      */
-    get minFrameSize () {
-        return _minFrameSize;
-    },
-    set minFrameSize (value) {
-        _minFrameSize = value;
-    },
     
     /**
      * !#en Append a sprite frame into the dynamic atlas.
@@ -163,13 +156,23 @@ let dynamicAtlasManager = {
         _atlasIndex = -1;
     },
 
-    deleteAtlasTexture (spriteFrame) {
+    deleteAtlasSpriteFrame (spriteFrame) {
         if (!spriteFrame._original) return;
 
         let texture = spriteFrame._original._texture;
+        this.deleteAtlasTexture(texture);
+    },
+
+    deleteAtlasTexture (texture) {
         if (texture) {
-            for (let i = 0, l = _atlases.length; i < l; i++) {
+            for (let i = _atlases.length - 1; i >= 0; i--) {
                 _atlases[i].deleteInnerTexture(texture);
+                
+                if (_atlases[i].isEmpty()) {
+                    _atlases[i].destroy();
+                    _atlases.splice(i, 1);
+                    _atlasIndex--;
+                }
             }
         }
     },
@@ -179,8 +182,9 @@ let dynamicAtlasManager = {
      * !#zh 在当前场景中显示所有动态图集，可以用来查看当前的合图状态。
      * @method showDebug
      * @param {Boolean} show
+     * @return {Node}
      */
-    showDebug: CC_DEV && function (show) {
+    showDebug: CC_DEBUG && function (show) {
         if (show) {
             if (!_debugNode || !_debugNode.isValid) {
                 let width = cc.visibleRect.width;
@@ -217,12 +221,13 @@ let dynamicAtlasManager = {
                     let spriteFrame = new cc.SpriteFrame();
                     spriteFrame.setTexture(_atlases[i]._texture);
 
-                    let sprite = node.addComponent(cc.Sprite)
+                    let sprite = node.addComponent(cc.Sprite);
                     sprite.spriteFrame = spriteFrame;
 
                     node.parent = content;
                 }
             }
+            return _debugNode;
         }
         else {
             if (_debugNode) {

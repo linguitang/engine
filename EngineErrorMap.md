@@ -222,14 +222,17 @@ element type is wrong!
 
 ### 1401
 
+<!-- DEPRECATED -->
 The first argument should be the destination object
 
 ### 1402
 
+<!-- DEPRECATED -->
 The 'visible' property of %s is deprecated, use 'enabled' instead please.
 
 ### 1403
 
+<!-- DEPRECATED -->
 Sorry, cc.audioEngine.willPlayMusic is removed.
 
 ### 1404
@@ -238,7 +241,7 @@ cc.spriteFrameCache is removed, please use cc.loader to load and cache sprite fr
 
 ### 1405
 
-The '%s' will be removed in v2.0, please use '%s' instead.
+The '%s' has been removed, please use '%s' instead.
 
 ### 1406
 
@@ -246,7 +249,8 @@ The '%s' will be removed in v2.0, please use '%s' instead.
 
 ### 1407
 
-cc.pool is being removed from v2.0, you are getting cc.js.Pool instead.
+<!-- DEPRECATED -->
+cc.pool has been removed, you are getting cc.js.Pool instead.
 
 ### 1408
 
@@ -304,6 +308,7 @@ cc.Scheduler: pause state of the scheduled task doesn't match the element pause 
 
 ### 1512
 
+<!-- DEPRECATED -->
 cc.Scheduler: updateFunc parameter is deprecated in scheduleUpdate function, and will be removed in v2.0
 
 ### 1513
@@ -312,18 +317,22 @@ cc.Scheduler: scheduler stopped using `__instanceId` as id since v2.0, you shoul
 
 ### 1600
 
+<!-- DEPRECATED -->
 getZOrder is deprecated. Please use getLocalZOrder instead.
 
 ### 1601
 
+<!-- DEPRECATED -->
 setZOrder is deprecated. Please use setLocalZOrder instead.
 
 ### 1602
 
+<!-- DEPRECATED -->
 RotationX != RotationY. Don't know which one to return
 
 ### 1603
 
+<!-- DEPRECATED -->
 ScaleX != ScaleY. Don't know which one to return
 
 ### 1604
@@ -341,14 +350,17 @@ child must be non-null
 
 ### 1607
 
+<!-- DEPRECATED -->
 removeFromParentAndCleanup is deprecated. Use removeFromParent instead
 
 ### 1608
 
+<!-- DEPRECATED -->
 boundingBox is deprecated. Use getBoundingBox instead
 
 ### 1609
 
+<!-- DEPRECATED -->
 argument tag is an invalid tag
 
 ### 1610
@@ -370,10 +382,12 @@ cc.Node.getActionByTag(): argument tag is an invalid tag
 
 ### 1614
 
+<!-- DEPRECATED -->
 resumeSchedulerAndActions is deprecated, please use resume instead.
 
 ### 1615
 
+<!-- DEPRECATED -->
 pauseSchedulerAndActions is deprecated, please use pause instead.
 
 ### 1616
@@ -475,6 +489,10 @@ Node's zIndex value can't be smaller than cc.macro.MIN_ZINDEX, setting to the mi
 
 Private node's zIndex can't be set, it will keep cc.macro.MIN_ZINDEX as its value
 
+### 1639
+
+cc.Action is deprecated, please use cc.TweenAction instead
+
 ### 1700
 
 <!-- DEPRECATED -->
@@ -540,7 +558,7 @@ cc.Layer.addLayer(): layer should be non-null
 
 ### 2200
 
-Resolution not valid
+Design resolution not valid
 
 ### 2201
 
@@ -629,6 +647,7 @@ cc.Sprite.setDisplayFrameWithAnimationName(): Invalid frame index
 
 ### 2604
 
+<!-- DEPRECATED -->
 setDisplayFrame is deprecated, please use setSpriteFrame instead.
 
 ### 2605
@@ -788,6 +807,7 @@ cc.SpriteBatchNode.addChild(): cc.SpriteBatchNode only supports cc.Sprites as ch
 
 ### 2710
 
+<!-- DEPRECATED -->
 Sprite.initWithTexture(): Argument must be non-nil 
 
 ### 2711
@@ -941,6 +961,7 @@ TextureCache:addPVRTCImage does not support on HTML5
 
 ### 3002
 
+<!-- DEPRECATED -->
 textureForKey is deprecated. Please use getTextureForKey instead.
 
 ### 3003
@@ -1062,6 +1083,7 @@ Mimpap texture only works in POT textures
 
 ### 3118
 
+<!-- DEPRECATED -->
 contentSize parameter is deprecated and ignored for cc.Texture2D initWithData function.
 
 ### 3119
@@ -1070,7 +1092,7 @@ Lazy init texture with image element failed due to image loading failure: %s
 
 ### 3120
 
-Loading texture from '%s' with unsupported type: '%s'. Add '%s' into 'cc.macro.SUPPORT_TEXTURE_FORMATS' please.
+Loading texture with unsupported type: '%s'. Add '%s' into 'cc.macro.SUPPORT_TEXTURE_FORMATS' please.
 
 ### 3200
 
@@ -1084,6 +1106,10 @@ Rect width exceeds maximum margin: %s
 ### 3400
 
 Rect height exceeds maximum margin: %s
+
+### 3401
+
+Set texture with a url of image is not supported anymore. Please use cc.assetManager.loadRemote to load a texture first. 
 
 ### 3500
 
@@ -1348,7 +1374,9 @@ Can not call `_super` or `prototype.ctor` in ES6 Classes "%s", use `super` inste
 
 ### 3652
 
-Failed to construct a dummy instance of the "%s" class using `new` behind the scenes. This is for getting default values declared in TypeScript. Please ensure the class will be able to construct during script's initialization. %s.
+Failed to `new %s()` under the hood, %s
+It is used for getting default values declared in TypeScript in the first place.
+Please ensure the constructor can be called during the script's initialization.
 
 ### 3653
 
@@ -1365,7 +1393,7 @@ myProp;
 @property({
   type: cc.Integer
 })
-myProp = 0;    // <--
+myProp = 0;   // <--
 ```
 
 ### 3654
@@ -1397,21 +1425,24 @@ set %s (value) {
 
 ### 3656
 
-The default value of %s.%s must be an empty string. (changed since 1.8)
+<!-- DEPRECATED -->
+The default value of %s.%s must be an empty string.
 
 ### 3657
 
+<!-- DEPRECATED -->
 The value assigned to %s should be Texture2D object, not url string. Since 1.8,  
 you can declare a texture object directly in properties by using:  
 ```
 {
     default: null,
-    type: cc.Texture2D  // use 'type:' instead of 'url:'
+    type: cc.Texture2D, // use 'type:' instead of 'url:'
 }
 ```
 
 ### 3658
 
+<!-- DEPRECATED -->
 browser does not support getters
 
 ### 3700
@@ -1544,6 +1575,7 @@ animator not added or already removed
 
 ### 3908
 
+<!-- DEPRECATED -->
 animation not added or already removed
 
 ### 3909
@@ -1567,6 +1599,7 @@ already-playing
 
 ### 4000
 
+<!-- DEPRECATED -->
 Sorry, the cc.Font has been modified from Raw Asset to Asset. Please load the font asset before using.
 
 ### 4001
@@ -1631,6 +1664,7 @@ Sorry, lineHeight of system font not supported on JSB.
 
 ### 4100
 
+<!-- DEPRECATED -->
 Property padding is deprecated, please use paddingLeft, paddingRight, paddingTop and paddingBottom instead
 
 ### 4200
@@ -1675,6 +1709,7 @@ No need to release non-cached asset.
 
 ### 4903
 
+<!-- DEPRECATED -->
 Can not get class '%s'
 
 ### 4904
@@ -1756,7 +1791,8 @@ cc.LabelBMFont._parseImageFileName() : file could not be found
 
 ### 4920
 
-Sorry, you shouldn't use id as item identity any more, please use url or uuid instead, the current id is being set as url: (%s)
+<!-- DEPRECATED -->
+Sorry, you shouldn't use id as item identity anymore, please use url or uuid instead, the current id is being set as url: (%s)
 
 ### 4921
 
@@ -1800,6 +1836,7 @@ Load image ( %s ) failed
 
 ### 4931
 
+<!-- DEPRECATED -->
 Download Uuid: can not find type of raw asset[ %s ]: %s
 
 ### 4932
@@ -1846,12 +1883,22 @@ Can not find script '%s'
 
 Can not find class '%s'
 
+### 5303
+
+Failed to deserialize %s, missing _deserialize function.
+
+### 5304
+
+Unable to deserialize version %s data.
+
 ### 5400
 
+<!-- DEPRECATED -->
 '%s' is deprecated, use '%s' instead please.
 
 ### 5401
 
+<!-- DEPRECATED -->
 '%s' is deprecated, use '%s' instead please.
 
 ### 5402
@@ -1876,30 +1923,35 @@ Class should be extended before assigning any prototype members.
 
 ### 5500
 
-'notify' can't work with 'get/set' !
+'notify' can not be used in 'get/set' !
 
 ### 5501
 
-'notify' must work with 'default' !
+'notify' must be used with 'default' !
 
 ### 5502
 
+<!-- DEPRECATED -->
 Invalid url of %s.%s
 
 ### 5503
 
+<!-- DEPRECATED -->
 The 'url' attribute of '%s.%s' is undefined when loading script.
 
 ### 5504
 
+<!-- DEPRECATED -->
 The 'url' type of '%s.%s' must be child class of cc.RawAsset.
 
 ### 5505
 
+<!-- DEPRECATED -->
 The 'url' type of '%s.%s' must not be child class of cc.Asset, otherwise you should use 'type: %s' instead.
 
 ### 5506
 
+<!-- DEPRECATED -->
 Can not specify 'type' attribute for '%s.%s', because its 'url' is already defined.
 
 ### 5507
@@ -1912,6 +1964,7 @@ Invalid type of %s.%s
 
 ### 5509
 
+<!-- DEPRECATED -->
 The 'type' attribute of '%s.%s' must be child class of cc.Asset, otherwise you should use 'url: %s' instead
 
 ### 5510
@@ -1948,6 +2001,7 @@ Property '%s.%s' must define at least one of 'default', 'get' or 'set'.
 
 ### 5600
 
+<!-- DEPRECATED -->
 Argument must be non-nil
 
 ### 5601
@@ -2127,15 +2181,15 @@ Unkown error
 
 ### 6030
 
-cc.ParticleSystem: error decoding or ungzipping textureImageData
+cc.ParticleSystem: error decoding or ungzipping textureImageData in plist '%s'
 
 ### 6031
 
-cc.ParticleSystem: unknown image format with Data
+cc.ParticleSystem: unknown image format with Data in plist %s
 
 ### 6032
 
-cc.ParticleSystem.initWithDictionary() : error loading the texture
+cc.ParticleSystem.initWithDictionary() : error loading the texture in plist '%s' 
 
 ### 6100
 
@@ -2144,18 +2198,22 @@ Not supported file types, Please try use the ccs.load
 
 ### 6200
 
+<!-- DEPRECATED -->
 Canvas doesn't support mesh slot!
 
 ### 6300
 
+<!-- DEPRECATED -->
 only cc.DrawNode is accepted as stencil
 
 ### 6301
 
+<!-- DEPRECATED -->
 Stencil buffer is not enabled.
 
 ### 6302
 
+<!-- DEPRECATED -->
 Nesting more than %d stencils is not supported. Everything will be drawn without stencil for this node and its children.
 
 ### 6400
@@ -2164,6 +2222,7 @@ asset.url is not usable in core process
 
 ### 6401
 
+<!-- DEPRECATED -->
 asset.urls is not usable in core process
 
 ### 6402
@@ -2184,26 +2243,31 @@ Can't find testFunc for (%s, $s).
 
 ### 6700
 
-Can't init canvas '%s' because it conflicts with the existing '%s', the scene should only have one active canvas at the same time
+Can't init canvas '%s' because it conflicts with the existing '%s', the scene should only have one active canvas at the same time.
 
 ### 6701
 
+<!-- DEPRECATED -->
 Should not add Canvas to a node which already contains a renderer component (%s).
 
 ### 6702
 
+<!-- DEPRECATED -->
 Should not add Canvas to a node which size is already used by its other component.
 
 ### 6703
 
-Can't initialise DrawingPrimitiveWebGL. context need is WebGLRenderingContext
+<!-- DEPRECATED -->
+Can't initialise DrawingPrimitiveWebGL. context need is WebGLRenderingContext.
 
 ### 6704
 
+<!-- DEPRECATED -->
 Polygon's point must greater than 2
 
 ### 6705
 
+<!-- DEPRECATED -->
 Argument must be non-nil
 
 ### 6800
@@ -2240,18 +2304,22 @@ Can not instantiate DOM element
 
 ### 7000
 
+<!-- DEPRECATED -->
 Failed to init asset's raw path.
 
 ### 7001
 
+<!-- DEPRECATED -->
 Should not load '%s' from script dynamically, unless it is placed in the 'resources' folder.
 
 ### 7002
 
+<!-- DEPRECATED -->
 Sorry can not load '%s' because it is not placed in the 'resources' folder.
 
 ### 7003
 
+<!-- DEPRECATED -->
 Failed to init builtin asset's raw path.
 
 ### 7100
@@ -2328,6 +2396,7 @@ _ccsg.TMXTiledMap.initWithXML(): Map not found. Please check the filename.
 
 ### 7214
 
+<!-- DEPRECATED -->
 propertiesForGID is deprecated. Please use getPropertiesForGID instead.
 
 ### 7215
@@ -2498,6 +2567,7 @@ Can not render dynamic created SkeletonData
 
 ### 7505
 
+<!-- DEPRECATED -->
 Invalid type of atlasFile, atlas should be registered as raw asset.
 
 ### 7506
@@ -2715,3 +2785,31 @@ LabelAtlas '%s' cannot be loaded, raw texture does not exist.
 ### 9101
 
 LabelAtlas '%s' cannot be loaded, fnt data does not exist.
+
+### 9102
+
+Program not support highp precision, will change to mediump.
+
+### 9103
+
+%s : Failed to set property [%s], property not found.
+
+### 9104
+
+%s : Failed to define [%s], define not found.
+
+### 9105
+
+%s : Failed to set property [%s], property length not correct.
+
+### 9106
+
+%s : Set property [%s] warning : should transform object to ArrayBuffer.
+
+### 9107
+
+%s : illegal property: [%s], myabe defined an unused property;
+
+### 9200
+
+cc.view.enableAntiAlias is deprecated, please use cc.Texture2D.setFilters instead
